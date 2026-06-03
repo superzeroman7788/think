@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Claude GitHub Skills Top 10</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="masthead" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Claude Skills Index</p>
+          <h1 id="page-title">GitHub skills 前十榜</h1>
+        </div>
+        <p class="lead">按 rank 升序展示仓库链接、星标、用途摘要，以及每个 skill 的优势和限制。</p>
+      </header>
+
+      <section class="toolbar" aria-label="数据概览">
+        <div>
+          <span class="stat-label">数据源</span>
+          <strong>data/skills.json</strong>
+        </div>
+        <div>
+          <span class="stat-label">排序</span>
+          <strong>Rank 升序</strong>
+        </div>
+        <div>
+          <span class="stat-label">数量</span>
+          <strong id="item-count">加载中</strong>
+        </div>
+      </section>
+
+      <section id="status" class="status" role="status" aria-live="polite">正在读取 skills 数据...</section>
+      <section id="skills-list" class="skills-list" aria-label="Claude GitHub skills 排名"></section>
+    </main>
+
+    <template id="skill-card-template">
+      <article class="skill-card">
+        <div class="rank-badge" aria-label=""></div>
+        <div class="skill-content">
+          <div class="skill-head">
+            <div>
+              <p class="category"></p>
+              <h2><a class="repo-link" target="_blank" rel="noopener noreferrer"></a></h2>
+            </div>
+            <div class="stars" aria-label="">
+              <span aria-hidden="true">★</span>
+              <strong></strong>
+            </div>
+          </div>
+          <p class="description"></p>
+          <div class="insights">
+            <section class="insight-block">
+              <h3>优点</h3>
+              <ul class="pros"></ul>
+            </section>
+            <section class="insight-block">
+              <h3>缺点</h3>
+              <ul class="cons"></ul>
+            </section>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

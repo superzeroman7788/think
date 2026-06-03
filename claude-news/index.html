@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Claude 每日资讯</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="masthead" aria-labelledby="page-title">
+        <div class="masthead-copy">
+          <p class="eyebrow">Daily Claude Brief</p>
+          <h1 id="page-title">Claude 每日资讯</h1>
+          <p class="lead">自动尝试拉取 Anthropic 官方公开资讯源，失败时显示内置示例，保持每天打开都有内容可读。</p>
+        </div>
+        <div class="source-panel" aria-label="资讯状态">
+          <span class="panel-label">当前数据</span>
+          <strong id="source-label">准备拉取</strong>
+          <span id="updated-label">尚未刷新</span>
+          <button id="refresh-button" type="button">刷新</button>
+        </div>
+      </header>
+
+      <section class="summary-bar" aria-label="列表概览">
+        <div>
+          <span>显示条数</span>
+          <strong id="count-label">0 / 20</strong>
+        </div>
+        <div>
+          <span>排序方式</span>
+          <strong>发布时间倒序</strong>
+        </div>
+        <div>
+          <span>官方源</span>
+          <strong>anthropic.com/news</strong>
+        </div>
+      </section>
+
+      <section id="status" class="status" role="status" aria-live="polite">正在加载资讯...</section>
+      <section id="news-list" class="news-list" aria-label="Claude 最新资讯"></section>
+    </main>
+
+    <template id="news-card-template">
+      <article class="news-card">
+        <div class="date-block">
+          <span class="date-month"></span>
+          <strong class="date-day"></strong>
+          <span class="date-year"></span>
+        </div>
+        <div class="card-body">
+          <h2><a class="news-link" target="_blank" rel="noopener noreferrer"></a></h2>
+          <p class="summary"></p>
+          <a class="read-link" target="_blank" rel="noopener noreferrer">阅读原文</a>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

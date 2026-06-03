@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cursor MCP · workbench tools</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1e1e1e;
+      color: #cccccc;
+      padding: 24px;
+      width: 520px;
+    }
+    .header {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #858585;
+      margin-bottom: 8px;
+    }
+    .server {
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      background: #252526;
+      overflow: hidden;
+    }
+    .server-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid #3c3c3c;
+      background: #2d2d2d;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ec9b0; }
+    .server-name { font-size: 14px; font-weight: 600; color: #fff; }
+    .badge {
+      margin-left: auto;
+      font-size: 11px;
+      color: #4ec9b0;
+      background: rgba(78, 201, 176, 0.12);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .tool {
+      padding: 12px 14px;
+      border-bottom: 1px solid #333;
+    }
+    .tool:last-child { border-bottom: none; }
+    .tool-name {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      color: #9cdcfe;
+      margin-bottom: 4px;
+    }
+    .tool-desc { font-size: 12px; color: #9d9d9d; line-height: 1.4; }
+    .meta {
+      margin-top: 16px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">MCP Servers · Tools</div>
+  <div class="server">
+    <div class="server-head">
+      <span class="dot"></span>
+      <span class="server-name">workbench</span>
+      <span class="badge">4 tools · connected</span>
+    </div>
+    <div class="tool">
+      <div class="tool-name">mcp__workbench__connect</div>
+      <div class="tool-desc">Connect to agent-group and return transport metadata.</div>
+    </div>
+    <div class="tool">
+      <div class="tool-name">mcp__workbench__send</div>
+      <div class="tool-desc">Send a message through agent-group's existing message transport.</div>
+    </div>
+    <div class="tool">
+      <div class="tool-name">mcp__workbench__inbox</div>
+      <div class="tool-desc">Read messages visible to an agent through agent-group's existing inbox.</div>
+    </div>
+    <div class="tool">
+      <div class="tool-name">mcp__workbench__report_status</div>
+      <div class="tool-desc">Report current task and/or simple event through agent-group.</div>
+    </div>
+  </div>
+  <div class="meta">
+    Source: ~/.cursor/projects/Users-bryan-think/mcps/user-workbench/tools/*.json<br>
+    serverIdentifier: user-workbench · serverName: workbench
+  </div>
+</body>
+</html>

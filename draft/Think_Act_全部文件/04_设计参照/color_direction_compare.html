@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think & Act · 配色方向对比</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Noto Sans SC", -apple-system, sans-serif;
+    background: #E9E2DA;
+    color: #2A2620;
+    padding: 40px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .page-title {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2A2620;
+    text-align: center;
+  }
+  .page-sub {
+    font-size: 14px;
+    color: #6E665C;
+    text-align: center;
+    margin-bottom: 28px;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  .stage {
+    display: flex;
+    gap: 36px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .col { display: flex; flex-direction: column; align-items: center; width: 340px; }
+
+  .col-label {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 16px; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .col-desc {
+    font-size: 12.5px; color: #6E665C; margin-bottom: 16px; text-align: center;
+    line-height: 1.5; min-height: 38px; padding: 0 6px;
+  }
+
+  /* ----- phone frame ----- */
+  .phone {
+    width: 340px;
+    border-radius: 40px;
+    padding: 12px;
+    background: #1C1A17;
+    box-shadow: 0 30px 70px -20px rgba(60,40,20,.45), 0 8px 24px -8px rgba(60,40,20,.25);
+  }
+  .screen {
+    border-radius: 30px;
+    overflow: hidden;
+    background: var(--bg);
+    height: 712px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .statusbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 14px 22px 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .statusbar .dots { letter-spacing: 2px; }
+
+  .scroll { flex: 1; overflow: hidden; padding: 6px 20px 0; }
+
+  .wordmark {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 15px; font-weight: 600; letter-spacing: .3px;
+    color: var(--ink);
+    margin-top: 4px;
+  }
+  .greeting {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 26px; font-weight: 700; color: var(--ink);
+    margin: 14px 0 4px;
+    line-height: 1.2;
+  }
+
+  .section-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px; letter-spacing: 2px; color: var(--ink-faint);
+    margin: 20px 0 8px;
+  }
+
+  /* ----- task card ----- */
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 13px 15px;
+    margin-bottom: 9px;
+    box-shadow: 0 2px 10px -4px rgba(90,60,30,.16);
+  }
+  .card.suggest {
+    background: transparent;
+    border: 1px dashed var(--hairline);
+    box-shadow: none;
+  }
+  .card-top { display:flex; align-items:center; gap:7px; }
+  .star { color: var(--accent); font-size: 14px; line-height: 1; }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--ink); flex:1; }
+  .card.suggest .card-title { font-weight: 500; color: var(--ink-soft); }
+  .time {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-tint);
+    padding: 3px 8px; border-radius: 7px;
+  }
+  .card.suggest .time { color: var(--ink-soft); background: transparent; }
+  .card-note {
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.5;
+    margin-top: 5px;
+  }
+
+  /* ----- AI voice ----- */
+  .ai-voice {
+    margin-top: 18px;
+    background: var(--voice-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px; line-height: 1.65; color: var(--ink-voice);
+  }
+  .ai-tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9.5px; letter-spacing: 2px; color: var(--ink-faint);
+    margin: 16px 0 7px; display:block;
+  }
+
+  /* ----- input + cta ----- */
+  .footer { padding: 10px 20px 22px; background: var(--bg); }
+  .input {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px; color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+  .cta {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 15px;
+    text-align: center;
+    font-size: 15px; font-weight: 700;
+    letter-spacing: .3px;
+    box-shadow: 0 8px 20px -6px var(--accent-shadow);
+  }
+
+  /* ===== THEME 1 · 番茄红 ===== */
+  .tomato {
+    --bg: #FBF5F0;
+    --card: #FFFFFF;
+    --accent: #E54A2E;
+    --accent-tint: #FBE3DC;
+    --accent-shadow: rgba(229,74,46,.5);
+    --ink: #2A2620;
+    --ink-soft: #7A7065;
+    --ink-faint: #A89C8E;
+    --ink-voice: #5E5247;
+    --hairline: #EADFD4;
+    --voice-bg: #F6ECE4;
+  }
+
+  /* ===== THEME 2 · 陶土 ===== */
+  .terracotta {
+    --bg: #FBF5F0;
+    --card: #FFFFFF;
+    --accent: #B5654A;
+    --accent-tint: #F0E2DA;
+    --accent-shadow: rgba(181,101,74,.42);
+    --ink: #2E2924;
+    --ink-soft: #7A7065;
+    --ink-faint: #A89C8E;
+    --ink-voice: #5E5247;
+    --hairline: #EADFD4;
+    --voice-bg: #F4EBE3;
+  }
+</style>
+</head>
+<body>
+
+  <div class="page-title">Think &amp; Act · 两个配色方向</div>
+  <div class="page-sub">同一个「早上 60 秒」屏,内容完全一样,只换强调色。背景都是米白,强调色只用在 ★、时间、looks good 上 —— 看哪种气质更像「搭子」。</div>
+
+  <div class="stage">
+
+    <!-- ===== Direction 1 ===== -->
+    <div class="col">
+      <div class="col-label">方向 1 · 番茄红</div>
+      <div class="col-desc">更有温度、更活泼、最有个性。像个有点劲儿的朋友。</div>
+      <div class="phone">
+        <div class="screen tomato">
+          <div class="statusbar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="scroll">
+            <div class="wordmark">think &amp; act</div>
+            <div class="greeting">morning.</div>
+            <div class="section-label">TODAY</div>
+
+            <div class="card">
+              <div class="card-top"><span class="star">★</span><span class="card-title">写产品文档第一稿</span><span class="time">09:00</span></div>
+              <div class="card-note">早上脑子清楚,先啃最重的那块。</div>
+            </div>
+
+            <div class="card suggest">
+              <div class="card-top"><span class="card-title">歇 10 分钟</span><span class="time">10:30</span></div>
+              <div class="card-note">起来走走,别一直坐着。</div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="card-title">回几封邮件</span><span class="time">14:00</span></div>
+              <div class="card-note">下午精力下来了,集中处理。</div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="star">★</span><span class="card-title">产品评审会</span><span class="time">15:00</span></div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="card-title">夜跑</span><span class="time">19:00</span></div>
+              <div class="card-note">把脑子里的东西甩一甩。</div>
+            </div>
+
+            <span class="ai-tag">AI VOICE</span>
+            <div class="ai-voice">上午整段文档你专心干,中间歇 10 分钟别死磕。下午会议前记得给电脑充好电,跑步前多喝点水。</div>
+          </div>
+          <div class="footer">
+            <div class="input">想调整今天的安排?跟我说一声</div>
+            <div class="cta">looks good</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Direction 2 ===== -->
+    <div class="col">
+      <div class="col-label">方向 2 · 暖石墨(陶土)</div>
+      <div class="col-desc">比番茄红收敛、更"高级",但温度还在。像个沉稳点的朋友。</div>
+      <div class="phone">
+        <div class="screen terracotta">
+          <div class="statusbar"><span>9:41</span><span class="dots">●●● ▮</span></div>
+          <div class="scroll">
+            <div class="wordmark">think &amp; act</div>
+            <div class="greeting">morning.</div>
+            <div class="section-label">TODAY</div>
+
+            <div class="card">
+              <div class="card-top"><span class="star">★</span><span class="card-title">写产品文档第一稿</span><span class="time">09:00</span></div>
+              <div class="card-note">早上脑子清楚,先啃最重的那块。</div>
+            </div>
+
+            <div class="card suggest">
+              <div class="card-top"><span class="card-title">歇 10 分钟</span><span class="time">10:30</span></div>
+              <div class="card-note">起来走走,别一直坐着。</div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="card-title">回几封邮件</span><span class="time">14:00</span></div>
+              <div class="card-note">下午精力下来了,集中处理。</div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="star">★</span><span class="card-title">产品评审会</span><span class="time">15:00</span></div>
+            </div>
+
+            <div class="card">
+              <div class="card-top"><span class="card-title">夜跑</span><span class="time">19:00</span></div>
+              <div class="card-note">把脑子里的东西甩一甩。</div>
+            </div>
+
+            <span class="ai-tag">AI VOICE</span>
+            <div class="ai-voice">上午整段文档你专心干,中间歇 10 分钟别死磕。下午会议前记得给电脑充好电,跑步前多喝点水。</div>
+          </div>
+          <div class="footer">
+            <div class="input">想调整今天的安排?跟我说一声</div>
+            <div class="cta">looks good</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

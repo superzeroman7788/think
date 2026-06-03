@@ -1,0 +1,34 @@
+{
+  "transport": "CallMcpTool",
+  "server": "user-workbench",
+  "tool": "mcp__workbench__connect",
+  "arguments": {
+    "project": "think-act",
+    "role": "cursor-be"
+  },
+  "response": {
+    "api_base": "http://127.0.0.1:8766",
+    "project": "think-act",
+    "role": "cursor-be",
+    "projects": [
+      {
+        "id": "think-act",
+        "name": "Think & Act",
+        "director": "dormant",
+        "coordinator": "codex-pm"
+      },
+      {
+        "id": "self",
+        "name": "指挥看板自身",
+        "director": "active",
+        "coordinator": ""
+      }
+    ],
+    "agents_summary": [
+      { "name": "codex-pm", "current_task": "已通过 mcp__workbench 直接工具连接,待命协调任务" },
+      { "name": "codex-fe", "current_task": "MCP 工具面板直连确认完成,待命接 PM 前端任务" },
+      { "name": "cursor-be", "current_task": "MCP 真接入会话验证完成,待命", "last_event": { "id": 63, "type": "awaiting", "summary": "MCP 真接入自证", "ref_message_id": 17 } }
+    ]
+  },
+  "captured_at": "2026-05-31T04:14:53+00:00"
+}

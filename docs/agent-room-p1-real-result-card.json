@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "message_id": 1,
+    "delivery_id": 1,
+    "worker_agent": "codex-exec-handler",
+    "target": "P1 real codex exec injection probe",
+    "plain_language": "codex exec handler completed; message body was handled as inert data.",
+    "worker_reported_status": "",
+    "review_status": "pending",
+    "test_status": "pending",
+    "preview": "{\"target\": \"P1 real codex exec injection probe\", \"plain_language\": \"codex exec handler completed; message body was handled as inert data.\", \"handler_evidence_path\": \"/tmp/agent-room-p1-real-handler-evidence.json\", \"codex_returncode\": 0, \"observed_body\": \"\\\"; touch /tmp/PWNED; echo $(whoami); echo `id`\"}",
+    "raw_output": "{\"returncode\": 0, \"stdout\": \"{\\\"target\\\": \\\"P1 real codex exec injection probe\\\", \\\"plain_language\\\": \\\"codex exec handler completed; message body was handled as inert data.\\\", \\\"handler_evidence_path\\\": \\\"/tmp/agent-room-p1-real-handler-evidence.json\\\", \\\"codex_returncode\\\": 0, \\\"observed_body\\\": \\\"\\\\\\\"; touch /tmp/PWNED; echo $(whoami); echo `id`\\\"}\\n\", \"stderr\": \"\"}",
+    "created_at": "2026-05-31T06:26:05+00:00",
+    "decided_at": null,
+    "decided_by": null,
+    "decision_note": "",
+    "is_human_decision": 0
+  }
+]

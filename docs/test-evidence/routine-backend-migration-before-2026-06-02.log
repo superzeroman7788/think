@@ -1,0 +1,27 @@
+# Routine backend — remote state BEFORE fix (2026-06-02)
+
+## Migration list (local vs remote)
+
+```
+   Local | Remote | Time (UTC)
+  -------|--------|------------
+   0001  | 0001   | 0001
+   0002  | 0002   | 0002
+   0003  | 0003   | 0003
+   0004  | 0004   | 0004
+   0005  |        | 0005        <-- 0005_routines.sql NOT on remote
+```
+
+Command: `supabase migration list` (project mpxdworxojotiwjxdeds)
+
+## REST probe (anon key + Bearer anon)
+
+```
+GET /rest/v1/routines?select=id&limit=1
+HTTP 404
+{"code":"PGRST205","message":"Could not find the table 'public.routines' in the schema cache","hint":"Perhaps you meant the table 'public.notes'"}
+```
+
+## Insert attempt (after table would exist — N/A before push)
+
+Save failure in app aligned with missing table: PostgREST returns PGRST205, client surfaces generic "保存这条日常时卡了一下。"

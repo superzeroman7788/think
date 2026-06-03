@@ -1,0 +1,144 @@
+
+========== setup users ==========
+USER_A=7915061b-3664-4479-ab43-2a8f1646c2cd
+USER_B=2d33dfec-82b0-4b9f-aea7-876bd0ee091f
+
+========== TEST 1 — CRUD via Supabase client path (REST + anon key + user token) ==========
+[
+  {
+    "id": "19d3516a-1462-4cc0-85f4-af00e14c2121",
+    "user_id": "7915061b-3664-4479-ab43-2a8f1646c2cd",
+    "title": "晨间拉伸",
+    "note": "10分钟活动开身",
+    "type": "health",
+    "default_time": "07:30:00",
+    "repeat_days": [
+      2
+    ],
+    "enabled": true,
+    "created_at": "2026-06-02T13:20:05.17276+00:00",
+    "updated_at": "2026-06-02T13:20:05.17276+00:00",
+    "deleted_at": null
+  }
+]
+[
+  {
+    "id": "19d3516a-1462-4cc0-85f4-af00e14c2121",
+    "title": "晨间拉伸",
+    "repeat_days": [
+      2
+    ],
+    "default_time": "07:30:00",
+    "type": "health",
+    "enabled": true
+  }
+]
+[
+  {
+    "id": "19d3516a-1462-4cc0-85f4-af00e14c2121",
+    "user_id": "7915061b-3664-4479-ab43-2a8f1646c2cd",
+    "title": "晨间拉伸",
+    "note": "改为休息日关闭",
+    "type": "health",
+    "default_time": "07:30:00",
+    "repeat_days": [
+      2
+    ],
+    "enabled": false,
+    "created_at": "2026-06-02T13:20:05.17276+00:00",
+    "updated_at": "2026-06-02T13:20:09.803617+00:00",
+    "deleted_at": null
+  }
+]
+[
+  {
+    "id": "19d3516a-1462-4cc0-85f4-af00e14c2121",
+    "user_id": "7915061b-3664-4479-ab43-2a8f1646c2cd",
+    "title": "晨间拉伸",
+    "note": "改为休息日关闭",
+    "type": "health",
+    "default_time": "07:30:00",
+    "repeat_days": [
+      2
+    ],
+    "enabled": false,
+    "created_at": "2026-06-02T13:20:05.17276+00:00",
+    "updated_at": "2026-06-02T13:20:09.803617+00:00",
+    "deleted_at": null
+  }
+]
+
+========== TEST 2 — RLS isolation (user B cannot read/update user A routine) ==========
+RLS_ID=a8ba0149-e764-4f15-9ab2-bef50657dbca
+user B read user A routine:
+[]
+user B update user A routine:
+[]
+
+========== TEST 3 — plan-generate merges today's routine with source=routine ==========
+{
+  "proposal_id": "3546d3d8-3da9-4c51-8a2f-43398e5172c0",
+  "provider": "deepseek",
+  "tasks": [
+    {
+      "title": "写周报",
+      "planned_start": "2026-06-02T09:00:00+08:00",
+      "planned_duration": 90,
+      "important": true,
+      "task_type": "deep_work",
+      "time_of_day": "morning",
+      "source": "user_voice"
+    },
+    {
+      "title": "开产品同步会",
+      "planned_start": "2026-06-02T14:00:00+08:00",
+      "planned_duration": 60,
+      "important": true,
+      "task_type": "social",
+      "time_of_day": "afternoon",
+      "source": "user_voice"
+    }
+  ]
+}
+today routine hit check:
+[]
+
+========== TEST 4 — next-day proof for source=routine ==========
+[
+  {
+    "id": "add9758f-6622-4750-bfbb-765edd892ed7",
+    "user_id": "7915061b-3664-4479-ab43-2a8f1646c2cd",
+    "title": "次日固定复盘",
+    "note": null,
+    "type": null,
+    "default_time": "21:00:00",
+    "repeat_days": [
+      3
+    ],
+    "enabled": true,
+    "created_at": "2026-06-02T13:20:21.122627+00:00",
+    "updated_at": "2026-06-02T13:20:21.122627+00:00",
+    "deleted_at": null
+  }
+]
+{
+  "proposal_id": "4a4d164c-434a-48cc-a2fd-bf51d5a1afbe",
+  "provider": "deepseek",
+  "tasks": [
+    {
+      "title": "需求评审走完",
+      "note": "核心目标，确保今天完成",
+      "planned_start": "2026-06-03T09:00:00+08:00",
+      "planned_duration": 90,
+      "important": true,
+      "task_type": "deep_work",
+      "time_of_day": "morning",
+      "source": "user_voice"
+    }
+  ]
+}
+tomorrow routine hit check:
+[]
+
+========== done ==========
+Capture this script output as acceptance evidence.

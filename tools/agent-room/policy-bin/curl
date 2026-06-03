@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+echo "agent-room policy: external curl is disabled for workers" >&2
+exit 126

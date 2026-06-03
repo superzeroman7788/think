@@ -1,0 +1,36 @@
+# Routine backend — remote state AFTER fix (2026-06-02)
+
+## Migration list
+
+```
+   Local | Remote | Time (UTC)
+  -------|--------|------------
+   0001  | 0001   | 0001
+   0002  | 0002   | 0002
+   0003  | 0003   | 0003
+   0004  | 0004   | 0004
+   0005  | 0005   | 0005
+```
+
+Command: `supabase db push` then `supabase migration list`
+
+## db push output (excerpt)
+
+```
+Applying migration 0005_routines.sql...
+Finished supabase db push.
+```
+
+## REST probe
+
+```
+GET /rest/v1/routines?select=id&limit=1 → HTTP 200 (empty array or rows)
+```
+
+## Anonymous user insert (app-equivalent)
+
+```
+POST /rest/v1/routines
+Body: user_id + title + default_time "09:00" + repeat_days [1..5]
+→ HTTP 201, row returned
+```

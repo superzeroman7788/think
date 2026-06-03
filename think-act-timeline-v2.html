@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think & Act · 时间线 v2</title>
+<style>
+  :root{
+    --bg:#F3EFE9;--card:#FFFFFF;--ink:#29241E;--ink2:#897F73;--ink3:#BBB2A5;
+    --line:rgba(41,36,30,.09);--clay:#A8543A;--claysoft:#EBDFD7;--herobg:#FBF5F0;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:#E6E0D8;display:flex;align-items:center;justify-content:center;font-family:var(--sans);padding:32px 0;}
+  .phone{width:380px;background:var(--bg);border-radius:34px;padding:24px 20px 26px;box-shadow:0 24px 60px rgba(41,36,30,.18);}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .greet{font-size:13px;color:var(--ink2);}
+  .gtitle{font-size:19px;font-weight:600;color:var(--ink);margin-top:2px;}
+  .ring{width:44px;height:44px;border-radius:50%;background:conic-gradient(var(--clay) 0deg,var(--claysoft) 0deg);display:flex;align-items:center;justify-content:center;flex:none;margin-left:12px;}
+  .ringi{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);color:var(--ink);}
+  .focus{background:var(--herobg);border:0.5px solid rgba(168,84,58,.18);border-radius:18px;padding:16px 16px 14px;margin-bottom:20px;}
+  .flabel{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .pill{width:6px;height:6px;border-radius:50%;background:var(--clay);}
+  .ftime{font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:auto;}
+  .ftitle{font-size:18px;font-weight:600;color:var(--ink);line-height:1.35;}
+  .fsub{font-size:13px;color:var(--ink2);margin:5px 0 13px;line-height:1.5;}
+  .startbtn{background:var(--clay);color:var(--herobg);border:none;border-radius:11px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;transition:transform .08s,background .2s;}
+  .startbtn:active{transform:scale(.97);}
+  .nowline{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .nowtxt{font-size:12px;font-weight:500;color:var(--clay);font-family:var(--mono);}
+  .nowline span.bar{flex:1;height:1px;background:rgba(168,84,58,.25);}
+  .node{display:grid;grid-template-columns:42px 22px 1fr;align-items:start;cursor:pointer;}
+  .ntime{font-size:12px;color:var(--ink2);font-family:var(--mono);padding-top:1px;}
+  .spine{position:relative;display:flex;justify-content:center;}
+  .spine::before{content:"";position:absolute;top:0;bottom:0;width:1.5px;background:var(--line);}
+  .node:first-child .spine::before{top:9px;}
+  .node:last-child .spine::before{bottom:auto;height:9px;}
+  .dot{position:relative;width:11px;height:11px;border-radius:50%;margin-top:3px;background:var(--bg);border:2px solid #C9C0B3;z-index:1;}
+  .dot.key{background:var(--clay);border-color:var(--clay);}
+  .node.done .dot{background:#C9C0B3;border-color:#C9C0B3;}
+  .node.done .ntitle{text-decoration:line-through;text-decoration-color:var(--ink3);color:var(--ink2);}
+  .ntitle{font-size:15px;color:var(--ink);font-weight:500;}
+  .ntitle.norm{font-weight:400;color:#433D34;}
+  .ndesc{font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.5;}
+  .sep{height:1px;background:var(--line);margin:18px 0 16px;}
+  input{width:100%;background:#fff;border:0.5px solid rgba(41,36,30,.12);border-radius:13px;padding:12px 15px;font-size:14px;color:var(--ink);font-family:var(--sans);outline:none;margin-bottom:14px;}
+  .confirm{background:var(--ink);color:var(--bg);border:none;border-radius:14px;padding:14px;width:100%;font-size:15px;font-weight:500;cursor:pointer;transition:transform .08s,background .2s;}
+  .confirm:active{transform:scale(.985);}
+  .ghost{display:block;margin:8px auto 0;background:none;border:none;color:var(--ink2);font-size:13px;cursor:pointer;}
+  .ghost:hover{color:var(--clay);}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="top">
+      <div><div class="greet">早上好,Bryan</div><div class="gtitle">把最重的那块先放下来</div></div>
+      <div class="ring" id="ring"><div class="ringi" id="ringtxt">0/4</div></div>
+    </div>
+
+    <div class="focus">
+      <div class="flabel"><span class="pill"></span><span style="font-size:12px;font-weight:500;color:var(--clay);">现在专注</span><span class="ftime">09:30 – 11:00</span></div>
+      <div class="ftitle">写产品文档第一稿</div>
+      <div class="fsub">早上脑子清楚,先啃最硬的那块。其余的我帮你挡着。</div>
+      <div style="display:flex;align-items:center;gap:10px;"><button class="startbtn" id="startbtn">▶ 开始专注</button><span style="font-size:12px;color:var(--ink3);">预计 90 分钟</span></div>
+    </div>
+
+    <div class="nowline"><span class="nowtxt">现在 09:42</span><span class="bar"></span></div>
+
+    <div id="timeline">
+      <div class="node"><div class="ntime">11:00</div><div class="spine"><span class="dot key"></span></div>
+        <div style="padding-bottom:16px;"><div class="ntitle">重要任务</div><div class="ndesc">值得被保护的一件,别让碎事挤掉。</div></div></div>
+      <div class="node"><div class="ntime">16:20</div><div class="spine"><span class="dot"></span></div>
+        <div style="padding-bottom:16px;"><div class="ntitle norm">普通任务</div><div class="ndesc">轻处理就好,不用做成大工程。</div></div></div>
+      <div class="node"><div class="ntime">19:00</div><div class="spine"><span class="dot"></span></div>
+        <div style="padding-bottom:4px;"><div class="ntitle norm">夜跑 5 公里</div><div class="ndesc">✦ 会议后我帮你排在这,给一天收个尾。</div></div></div>
+    </div>
+
+    <div class="sep"></div>
+    <input type="text" id="inp" placeholder="想调整今天的安排?跟我说一声">
+    <button class="confirm" id="confirm">这样安排，挺好</button>
+    <button class="ghost" id="lighter">今天状态一般，想再轻一点</button>
+  </div>
+<script>
+var total=4,doneBase=0;
+function refresh(){
+  var d=document.querySelectorAll('#timeline .node.done').length+doneBase;
+  var deg=Math.round(d/total*360);
+  document.getElementById('ring').style.background='conic-gradient(#A8543A '+deg+'deg,#EBDFD7 '+deg+'deg)';
+  document.getElementById('ringtxt').textContent=d+'/'+total;
+}
+document.querySelectorAll('#timeline .node').forEach(function(n){n.addEventListener('click',function(){n.classList.toggle('done');refresh();});});
+document.getElementById('startbtn').addEventListener('click',function(){
+  if(this.dataset.on){this.textContent='▶ 开始专注';this.style.background='#A8543A';this.dataset.on='';doneBase=0;}
+  else{this.textContent='✓ 专注中…轻点结束';this.style.background='#29241E';this.dataset.on='1';doneBase=1;}refresh();
+});
+document.getElementById('confirm').addEventListener('click',function(){this.textContent='✓ 今天就这么走';this.style.background='#A8543A';});
+document.getElementById('lighter').addEventListener('click',function(){
+  var n=document.querySelectorAll('#timeline .node')[1];
+  n.querySelector('.ntitle').textContent='普通任务（可选）';
+  n.querySelector('.ndesc').textContent='已放轻 · 做不完也没关系，先放一放。';
+  this.textContent='好，已经帮你松了口气 ✓';this.style.color='#A8543A';
+});
+</script>
+</body>
+</html>

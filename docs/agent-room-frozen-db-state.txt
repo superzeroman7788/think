@@ -1,0 +1,9 @@
+id  sender  target        status    created_at                 decided_at                 decided_by
+--  ------  ------------  --------  -------------------------  -------------------------  ----------
+1   boss    codex-worker  approved  2026-05-31T07:10:55+00:00  2026-05-31T07:10:55+00:00  you       
+id  message_id  agent         status     attempts  created_at                 delivered_at               last_error
+--  ----------  ------------  ---------  --------  -------------------------  -------------------------  ----------
+1   1           codex-worker  delivered  1         2026-05-31T07:10:55+00:00  2026-05-31T07:11:41+00:00            
+result_card_tables
+------------------
+0                 

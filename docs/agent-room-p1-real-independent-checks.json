@@ -1,0 +1,11 @@
+{
+  "pwned_exists": false,
+  "body_exact": true,
+  "stdin_contains_literal_payload": true,
+  "codex_input_contains_literal_payload": true,
+  "codex_stdout_contains_literal_payload": true,
+  "payload_absent_from_codex_argv": true,
+  "shell_tokens_absent_from_codex_argv": true,
+  "id_output_absent_from_codex_input_stdout": true,
+  "whoami_output_absent_from_body_and_codex_io": true
+}

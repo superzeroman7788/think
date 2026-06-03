@@ -1,0 +1,68 @@
+{
+  "agent_group": {
+    "project_id": "think-act",
+    "raw_output_url": "http://127.0.0.1:8766/api/agent-room/raw-output"
+  },
+  "relay": {
+    "enabled": true,
+    "max_hops": 6,
+    "sender": "relay-system"
+  },
+  "roles": {
+    "codex-worker": {
+      "runner": "codex_exec",
+      "handler_profile": "workspace_writer",
+      "workspace": "/Users/bryan/think",
+      "sandbox": "workspace-write",
+      "executable": "/opt/homebrew/bin/codex",
+      "timeout_seconds": 1800,
+      "handoff_doc": "/Users/bryan/think/docs/codex-worker-handoff.md"
+    },
+    "reviewer": {
+      "runner": "codex_exec",
+      "handler_profile": "reviewer",
+      "workspace": "/Users/bryan/think",
+      "sandbox": "read-only",
+      "executable": "/opt/homebrew/bin/codex",
+      "timeout_seconds": 900
+    },
+    "claude-pm": {
+      "runner": "claude_code",
+      "handler_profile": "pm",
+      "workspace": "/Users/bryan/think",
+      "sandbox": "workspace-write",
+      "executable": "/Users/bryan/Library/Application Support/Claude/claude-code/2.1.156/claude.app/Contents/MacOS/claude",
+      "timeout_seconds": 900,
+      "memory_path": "/Users/bryan/think/docs/agent-room/pm-memory.md"
+    },
+    "cursor-worker": {
+      "runner": "cursor_cli",
+      "handler_profile": "workspace_writer",
+      "workspace": "/Users/bryan/think",
+      "sandbox": "workspace-write",
+      "executable": "/Users/bryan/.local/bin/cursor-agent",
+      "chat_id": "568a88de-4ab6-4825-b6a4-348c14f7e671",
+      "timeout_seconds": 900
+    },
+    "codex-qa": {
+      "runner": "codex_thread",
+      "handler_profile": "reviewer",
+      "workspace": "/Users/bryan/think",
+      "sandbox": "read-only",
+      "thread_id": "019e7ea0-cff8-70a0-8bec-45a0365fdaab",
+      "timeout_seconds": 180
+    },
+    "openclaw-worker": {
+      "runner": "disabled",
+      "handler_profile": "adapter-only"
+    },
+    "hermes-worker": {
+      "runner": "disabled",
+      "handler_profile": "adapter-only"
+    },
+    "pi-worker": {
+      "runner": "disabled",
+      "handler_profile": "adapter-only"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+--- adb starting (pid 6689) ---
+05-28 11:08:43.974  6689 22898 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-28 11:08:43.974  6689 22898 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-28 11:08:43.974  6689 22898 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-28 11:08:43.974  6689 22898 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-28 11:08:43.974  6689 22898 I adb     : main.cpp:66 
+adb server killed by remote request
+--- adb starting (pid 76766) ---
+05-29 12:30:54.571 76766 4028092 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 12:30:54.571 76766 4028092 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 12:30:54.571 76766 4028092 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 12:30:54.571 76766 4028092 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 12:30:54.571 76766 4028092 I adb     : main.cpp:66 
+adb server killed by remote request
+--- adb starting (pid 76898) ---
+05-29 12:30:57.628 76898 4028291 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 12:30:57.628 76898 4028291 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 12:30:57.628 76898 4028291 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 12:30:57.628 76898 4028291 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 12:30:57.628 76898 4028291 I adb     : main.cpp:66 
+05-29 12:31:57.340 76898 4031149 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 12:31:57.347 76898 4031149 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 12:31:57.347 76898 4028291 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 12:31:57.347 76898 4028291 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-29 19:15:39.170 76898 4032176 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Unknown error: 316
+05-29 19:15:39.175 76898 4032176 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 19:15:39.177 76898 4028291 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 19:15:39.185 76898 4028291 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 19:15:39.185 76898 4028291 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+adb server killed by remote request
+--- adb starting (pid 8722) ---
+05-29 19:16:02.439  8722 5329579 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 19:16:02.439  8722 5329579 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 19:16:02.439  8722 5329579 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 19:16:02.439  8722 5329579 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 19:16:02.439  8722 5329579 I adb     : main.cpp:66 
+adb server killed by remote request
+--- adb starting (pid 8842) ---
+05-29 19:16:05.476  8842 5329745 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 19:16:05.476  8842 5329745 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 19:16:05.476  8842 5329745 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 19:16:05.476  8842 5329745 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 19:16:05.476  8842 5329745 I adb     : main.cpp:66 
+05-29 19:16:37.209  8842 5331543 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 19:16:37.215  8842 5331543 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 19:16:37.228  8842 5329745 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 19:16:37.237  8842 5329745 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 19:16:37.237  8842 5329745 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+adb server killed by remote request
+05-29 19:45:58.200  8842 5329745 I adb     : transport.cpp:1071 kicking transport 0xb0aca0000 10AE3Z13YU002EL
+05-29 19:45:58.200  8842 5329745 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 19:45:58.200  8842 5331939 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 19:45:58.200  8842 5331940 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: write thread stopped
+--- adb starting (pid 70636) ---
+05-29 19:45:58.222 70636 5427358 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 19:45:58.222 70636 5427358 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 19:45:58.222 70636 5427358 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 19:45:58.222 70636 5427358 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 19:45:58.222 70636 5427358 I adb     : main.cpp:66 
+adb server killed by remote request
+05-29 19:46:01.227 70636 5427358 I adb     : transport.cpp:1071 kicking transport 0x103c01520 10AE3Z13YU002EL
+05-29 19:46:01.227 70636 5427358 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 19:46:01.229 70636 5427368 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 19:46:01.229 70636 5427368 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+--- adb starting (pid 70766) ---
+05-29 19:46:01.267 70766 5427567 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+05-29 19:46:01.267 70766 5427567 I adb     : main.cpp:66 Version 37.0.0-14910828
+05-29 19:46:01.267 70766 5427567 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+05-29 19:46:01.267 70766 5427567 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+05-29 19:46:01.267 70766 5427567 I adb     : main.cpp:66 
+05-29 22:49:34.267 70766 5427579 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Unknown error: 316
+05-29 22:49:34.270 70766 5427579 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 22:49:34.271 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 22:49:34.274 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 22:49:34.274 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-29 22:52:37.349 70766 5994710 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 22:52:37.354 70766 5994710 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 22:52:37.354 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 22:52:37.355 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 22:52:37.356 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-29 22:53:19.266 70766 5994971 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 22:53:19.274 70766 5994971 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 22:53:19.274 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 22:53:19.276 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-29 22:54:07.952 70766 5999684 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 22:54:07.958 70766 5999684 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 22:54:07.958 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 22:54:07.959 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 22:54:07.959 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-29 22:56:37.340 70766 5999915 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-29 22:56:37.346 70766 5999915 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-29 22:56:37.346 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-29 22:56:37.348 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-29 22:56:37.348 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+05-30 00:46:36.930 70766 6364197 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+05-30 00:46:36.934 70766 6364197 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+05-30 00:46:36.934 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+05-30 00:46:36.936 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+05-30 00:46:36.936 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+06-01 09:43:12.493 70766 6374189 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Unknown error: 316
+06-01 09:43:12.494 70766 6374189 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+06-01 09:43:12.497 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+06-01 09:43:12.498 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+06-01 09:43:12.498 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+06-02 18:41:00.416 70766 21864057 I adb     : usb_libusb.cpp:100 10AE3Z13YU002EL: read failed: Undefined error: 0
+06-02 18:41:00.421 70766 21864057 I adb     : transport.cpp:1170 10AE3Z13YU002EL: connection terminated: read thread stopped
+06-02 18:41:00.421 70766 5427567 I adb     : usb_libusb.cpp:166 LibUsbConnection(10AE3Z13YU002EL): stopping
+06-02 18:41:00.422 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(10AE3Z13YU002EL) Stop: not running
+06-02 18:41:00.422 70766 5427567 I adb     : usb_libusb.cpp:159 LibUsbConnection(<unknown>) Stop: not running
+--- adb starting (pid 47412) ---
+06-02 22:30:46.902 47412 22344539 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+06-02 22:30:46.902 47412 22344539 I adb     : main.cpp:66 Version 37.0.0-14910828
+06-02 22:30:46.902 47412 22344539 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+06-02 22:30:46.902 47412 22344539 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+06-02 22:30:46.902 47412 22344539 I adb     : main.cpp:66 
+06-02 22:30:47.509 47412 22344539 F adb     : main.cpp:165 could not install *smartsocket* listener: Operation not permitted
+--- adb starting (pid 79190) ---
+06-02 23:17:48.994 79190 22444770 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+06-02 23:17:48.994 79190 22444770 I adb     : main.cpp:66 Version 37.0.0-14910828
+06-02 23:17:48.994 79190 22444770 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+06-02 23:17:48.994 79190 22444770 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+06-02 23:17:48.994 79190 22444770 I adb     : main.cpp:66 
+06-02 23:17:49.580 79190 22444770 F adb     : main.cpp:165 could not install *smartsocket* listener: Operation not permitted
+--- adb starting (pid 2683) ---
+06-02 23:33:02.080  2683 22492308 I adb     : main.cpp:66 Android Debug Bridge version 1.0.41
+06-02 23:33:02.080  2683 22492308 I adb     : main.cpp:66 Version 37.0.0-14910828
+06-02 23:33:02.080  2683 22492308 I adb     : main.cpp:66 Installed as /Users/bryan/Library/Android/sdk/platform-tools/adb
+06-02 23:33:02.080  2683 22492308 I adb     : main.cpp:66 Running on Darwin 25.5.0 (arm64)
+06-02 23:33:02.080  2683 22492308 I adb     : main.cpp:66 
+06-02 23:33:02.604  2683 22492308 F adb     : main.cpp:165 could not install *smartsocket* listener: Operation not permitted

@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+if [ "${1:-}" = "push" ]; then
+  echo "agent-room policy: git push is disabled for workers" >&2
+  exit 126
+fi
+exec /opt/homebrew/bin/git "$@"

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think & Act · 暖石墨</title>
+<style>
+  :root{
+    --bg:#F4F1EC; --card:#FFFFFF; --ink:#2B2620; --ink2:#8C857A; --ink3:#B8B0A4;
+    --line:rgba(43,38,32,.08); --clay:#A85638; --claysoft:#EDE2DB; --graphite:#2B2620;
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:#E7E2DA;display:flex;align-items:center;justify-content:center;font-family:var(--sans);padding:32px 0;}
+  .phone{width:380px;background:var(--bg);border-radius:34px;padding:24px 20px 28px;box-shadow:0 24px 60px rgba(43,38,32,.18);}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
+  .brand{font-size:15px;font-weight:600;color:var(--ink);letter-spacing:.2px;}
+  .brand b{color:var(--clay);font-weight:600;}
+  .date{font-size:12px;color:var(--ink3);font-family:var(--mono);}
+  .h1{font-size:23px;font-weight:600;color:var(--ink);line-height:1.3;margin:12px 0 2px;}
+  .sub{font-size:13px;color:var(--ink2);margin-bottom:20px;}
+  .card{background:var(--card);border:0.5px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:opacity .18s,transform .08s,background .18s;}
+  .card:active{transform:scale(.992);}
+  .card.done{opacity:.55;} .card.skip{opacity:.4;}
+  .card.done .title,.card.skip .title{text-decoration:line-through;text-decoration-color:var(--ink3);}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .left{display:flex;align-items:center;gap:8px;min-width:0;}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .dot.key{background:var(--clay);}
+  .dot.norm{border:1.5px solid #C9C0B3;background:transparent;}
+  .title{font-size:15px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .title.norm{font-weight:400;color:#4A443C;}
+  .time{font-family:var(--mono);font-size:13px;color:var(--ink2);background:#F4F1EC;border-radius:8px;padding:3px 9px;letter-spacing:.5px;}
+  .csub{font-size:13px;color:var(--ink2);margin:6px 0 0 15px;line-height:1.5;}
+  .voice{display:flex;gap:10px;margin:18px 0 16px;}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--claysoft);display:flex;align-items:center;justify-content:center;flex:none;color:var(--clay);font-size:14px;}
+  .voicetxt{font-size:13px;color:#6B645B;line-height:1.6;padding-top:3px;}
+  .voicetxt b{font-family:var(--mono);color:var(--ink);font-weight:400;}
+  .inputwrap{position:relative;margin-bottom:14px;}
+  input{width:100%;background:#fff;border:0.5px solid rgba(43,38,32,.12);border-radius:14px;padding:13px 44px 13px 15px;font-size:14px;color:var(--ink);font-family:var(--sans);outline:none;}
+  .send{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:10px;border:none;background:var(--claysoft);color:var(--clay);cursor:pointer;font-size:16px;}
+  .confirm{background:var(--graphite);color:#F4F1EC;border:none;border-radius:14px;padding:14px;width:100%;font-size:15px;font-weight:500;cursor:pointer;transition:transform .08s,background .2s;}
+  .confirm:active{transform:scale(.985);}
+  .ghost{display:block;margin:6px auto 0;background:none;border:none;color:var(--ink2);font-size:14px;cursor:pointer;padding:8px;}
+  .ghost:hover{color:var(--clay);}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="head"><span class="brand">think <b>&amp;</b> act</span><span class="date">5月29日 周五</span></div>
+    <div class="h1">今天有 3 件事</div>
+    <div class="sub">2 件值得保护的重点 · 1 件轻处理就好</div>
+
+    <div class="card" data-state="0">
+      <div class="row"><div class="left"><span class="dot key"></span><span class="title">写产品文档第一稿</span></div><span class="time" data-orig="09:30">09:30</span></div>
+      <div class="csub">早上脑子清楚,先把最重的那块放下来。</div>
+    </div>
+    <div class="card" data-state="0">
+      <div class="row"><div class="left"><span class="dot key"></span><span class="title">重要任务</span></div><span class="time" data-orig="11:00">11:00</span></div>
+      <div class="csub">这件今天值得被保护,别让碎事挤掉。</div>
+    </div>
+    <div class="card" data-state="0">
+      <div class="row"><div class="left"><span class="dot norm"></span><span class="title norm">普通任务</span></div><span class="time" data-orig="16:20">16:20</span></div>
+      <div class="csub">轻一点处理就好,不用把它做成大工程。</div>
+    </div>
+
+    <div class="voice"><div class="avatar">✦</div><div class="voicetxt">上午留了块完整时间给你专注,下午会议后我把跑步排在 <b>19:00</b>。</div></div>
+
+    <div class="inputwrap"><input type="text" placeholder="想调整今天的安排?跟我说一声"><button class="send">↑</button></div>
+    <button class="confirm" id="confirm">✓ 看起来不错</button>
+    <button class="ghost" id="lighter">今天想再轻一点</button>
+  </div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.addEventListener('click',function(){
+    var s=(parseInt(c.dataset.state)+1)%3;c.dataset.state=s;
+    c.classList.toggle('done',s===1);c.classList.toggle('skip',s===2);
+    var t=c.querySelector('.time');t.textContent=s===0?t.dataset.orig:(s===1?'已完成':'已跳过');
+  });
+});
+document.getElementById('confirm').addEventListener('click',function(){this.textContent='✓ 已确认今天的安排';this.style.background='#A85638';});
+document.getElementById('lighter').addEventListener('click',function(){
+  var c=document.querySelectorAll('.card')[2];c.style.background='#FAF6F1';
+  c.querySelector('.csub').textContent='已放轻 · 做不完也没关系,先放一放。';
+  this.textContent='已经帮你放轻了 ✓';this.style.color='#A85638';
+});
+</script>
+</body>
+</html>

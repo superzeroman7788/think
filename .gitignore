@@ -1,0 +1,25 @@
+.env
+.env.local
+.agents/
+
+# supabase local
+supabase/.branches
+supabase/.temp
+supabase/.env.keys
+
+# generated prompt bundle for edge deploy
+supabase/functions/plan-generate/plan_generate_v1.bundle.ts
+
+# Build and cache artifacts
+.gradle/
+.gradle-agent/
+app/build/
+build/
+output/
+
+# Local/tool outputs
+.playwright-cli/
+.DS_Store
+
+# Python cache
+__pycache__/

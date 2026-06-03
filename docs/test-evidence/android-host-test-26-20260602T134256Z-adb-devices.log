@@ -1,0 +1,18 @@
+# list android devices
+
+- created_at: 2026-06-02T13:43:00.687987+00:00
+- cwd: /Users/bryan/think
+- argv: ["/Users/bryan/Library/Android/sdk/platform-tools/adb", "devices", "-l"]
+- returncode: 0
+- duration_seconds: 0.01
+
+## stdout
+
+List of devices attached
+10AE3Z13YU002EL        device usb:2-1.2 product:PD2314 model:V2314A device:PD2314 transport_id:9
+
+
+
+## stderr
+
+

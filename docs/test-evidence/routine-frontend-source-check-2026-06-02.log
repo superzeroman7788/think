@@ -1,0 +1,98 @@
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/MainActivity.kt:11:import com.thinkandact.app.ui.routine.RoutineScreen
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/MainActivity.kt:26:                            onOpenRoutines = { navController.navigate("routines") }
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/MainActivity.kt:29:                    composable("routines") {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/MainActivity.kt:30:                        RoutineScreen(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:61:    onOpenRoutines: () -> Unit,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:82:            MorningHeader(onOpenRoutines = onOpenRoutines)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:142:private fun MorningHeader(onOpenRoutines: () -> Unit) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:149:                .clickable(onClick = onOpenRoutines)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:273:            suggested = item.task.source == "ai_suggestion",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:274:            routine = item.task.source == "routine",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:395:    routine: Boolean = false,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:446:            if (routine) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/morning/MorningScreen.kt:448:                    text = "routine",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:1:package com.thinkandact.app.ui.routine
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:48:import com.thinkandact.app.data.remote.RoutineDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:58:fun RoutineScreen(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:60:    viewModel: RoutineViewModel = hiltViewModel()
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:63:    var editingForm by remember { mutableStateOf<RoutineFormState?>(null) }
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:64:    var deletingRoutine by remember { mutableStateOf<RoutineDto?>(null) }
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:76:        RoutineHeader(onBack = onBack)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:86:                onClick = { editingForm = RoutineFormState() },
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:102:        SectionLabel(text = "my routines", modifier = Modifier.padding(bottom = 8.dp))
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:106:            state.routines.isEmpty() -> EmptyBlock()
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:107:            else -> state.routines.forEach { routine ->
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:108:                RoutineCard(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:109:                    routine = routine,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:111:                    isPending = state.pendingRoutineId == routine.id,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:112:                    onEdit = { editingForm = routine.toFormState() },
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:113:                    onToggle = { viewModel.toggleEnabled(routine) },
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:114:                    onDelete = { deletingRoutine = routine }
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:131:        RoutineFormDialog(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:137:                viewModel.saveRoutine(nextForm)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:143:    deletingRoutine?.let { routine ->
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:145:            routine = routine,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:146:            onDismiss = { deletingRoutine = null },
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:148:                viewModel.deleteRoutine(routine)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:149:                deletingRoutine = null
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:156:private fun RoutineHeader(onBack: () -> Unit) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:181:        text = "固定项只在这里管理,早上计划只显示后端返回的 routine。",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:232:private fun RoutineCard(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:233:    routine: RoutineDto,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:244:            .background(if (routine.enabled) TnaColors.Surface else TnaColors.LineSoft, TnaShapes.Card)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:245:            .border(1.dp, if (routine.enabled) TnaColors.Line else TnaColors.LineSoft, TnaShapes.Card)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:251:                    text = routine.title,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:253:                        color = if (routine.enabled) TnaColors.Ink else TnaColors.Muted,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:258:                    text = "${routine.defaultTime.take(5)} · ${routine.repeatDays.dayLabel()} · $timezone",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:263:            RoutineIconButton(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:265:                contentDescription = if (routine.enabled) "停用" else "启用",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:267:                tint = if (routine.enabled) TnaColors.AccentDeep else TnaColors.Muted,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:270:            RoutineIconButton(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:276:            RoutineIconButton(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:285:        if (!routine.type.isNullOrBlank() || !routine.note.isNullOrBlank()) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:292:                if (!routine.type.isNullOrBlank()) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:293:                    RoutinePill(text = routine.type)
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:295:                if (!routine.note.isNullOrBlank()) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:297:                        text = routine.note,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:308:private fun RoutineIconButton(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:334:private fun RoutinePill(text: String) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:345:private fun RoutineFormDialog(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:346:    initial: RoutineFormState,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:350:    onConfirm: (RoutineFormState) -> Unit
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:360:        RoutineInput(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:367:        RoutineInput(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:374:        RoutineInput(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:520:private fun RoutineInput(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:549:    routine: RoutineDto,
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/ui/routine/RoutineScreen.kt:555:            text = "删除「${routine.title}」?",
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:4:import com.thinkandact.app.data.remote.RoutineDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:5:import com.thinkandact.app.data.remote.RoutineEnabledUpdateDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:6:import com.thinkandact.app.data.remote.RoutineInsertDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:7:import com.thinkandact.app.data.remote.RoutineSoftDeleteDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:8:import com.thinkandact.app.data.remote.RoutineUpdateDto
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:28:class RoutineRepository @Inject constructor(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:32:    suspend fun listRoutines(): List<RoutineDto> {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:35:            "${BuildConfig.SUPABASE_URL}/rest/v1/routines" +
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:43:            throw IllegalStateException(response.bodyAsText().ifBlank { "Routine list failed." })
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:49:    suspend fun createRoutine(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:55:    ): RoutineDto {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:58:            ?: throw IllegalStateException("Missing user id for routine insert.")
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:59:        val response = httpClient.post("${BuildConfig.SUPABASE_URL}/rest/v1/routines") {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:65:                    RoutineInsertDto(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:79:            throw IllegalStateException(response.bodyAsText().ifBlank { "Routine create failed." })
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:82:        return response.body<List<RoutineDto>>().first()
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:85:    suspend fun updateRoutine(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:93:    ): RoutineDto {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:95:        val response = httpClient.patch("${BuildConfig.SUPABASE_URL}/rest/v1/routines?id=eq.${id.urlEncode()}") {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:100:                RoutineUpdateDto(
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:112:            throw IllegalStateException(response.bodyAsText().ifBlank { "Routine update failed." })
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:115:        return response.body<List<RoutineDto>>().first()
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:118:    suspend fun setEnabled(id: String, enabled: Boolean): RoutineDto {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:120:        val response = httpClient.patch("${BuildConfig.SUPABASE_URL}/rest/v1/routines?id=eq.${id.urlEncode()}") {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:124:            setBody(RoutineEnabledUpdateDto(enabled = enabled))
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:128:            throw IllegalStateException(response.bodyAsText().ifBlank { "Routine enabled update failed." })
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:131:        return response.body<List<RoutineDto>>().first()
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:134:    suspend fun deleteRoutine(id: String) {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:136:        val response = httpClient.patch("${BuildConfig.SUPABASE_URL}/rest/v1/routines?id=eq.${id.urlEncode()}") {
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:140:            setBody(RoutineSoftDeleteDto(deletedAt = Instant.now().toString()))
+/Users/bryan/think/app/src/main/java/com/thinkandact/app/data/RoutineRepository.kt:144:            throw IllegalStateException(response.bodyAsText().ifBlank { "Routine delete failed." })

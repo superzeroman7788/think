@@ -1,0 +1,172 @@
+[
+  {
+    "rank": 1,
+    "name": "anthropic-cookbook",
+    "repo_url": "https://github.com/anthropics/anthropic-cookbook",
+    "stars": 13600,
+    "description": "Claude API examples and practical recipes for tool use, retrieval, structured outputs, and agent workflows.",
+    "pros": [
+      "Official examples make API patterns easy to adapt",
+      "Broad coverage across common Claude application flows",
+      "Good reference for teams standardizing prompt and tool practices"
+    ],
+    "cons": [
+      "Examples still require production hardening",
+      "Repository breadth can make the first path hard to choose"
+    ],
+    "category": "API cookbook"
+  },
+  {
+    "rank": 2,
+    "name": "awesome-claude",
+    "repo_url": "https://github.com/hesreallyhim/awesome-claude",
+    "stars": 9800,
+    "description": "A curated directory of Claude projects, prompts, workflows, and community resources.",
+    "pros": [
+      "Fast discovery across many Claude use cases",
+      "Useful map of community tools and integrations",
+      "Simple structure works well for evaluation lists"
+    ],
+    "cons": [
+      "Curated links vary in freshness",
+      "Quality and maintenance differ by linked project"
+    ],
+    "category": "Directory"
+  },
+  {
+    "rank": 3,
+    "name": "claude-code",
+    "repo_url": "https://github.com/anthropics/claude-code",
+    "stars": 8400,
+    "description": "Command-line coding assistant patterns and resources for agentic development workflows.",
+    "pros": [
+      "Targets real developer workflows instead of isolated demos",
+      "Strong fit for repository-local task execution",
+      "Helpful reference for code review and implementation loops"
+    ],
+    "cons": [
+      "Requires careful permissions and workspace hygiene",
+      "Best practices continue to evolve quickly"
+    ],
+    "category": "Developer tooling"
+  },
+  {
+    "rank": 4,
+    "name": "claude-engineer",
+    "repo_url": "https://github.com/Doriandarko/claude-engineer",
+    "stars": 7900,
+    "description": "An experimental coding agent that demonstrates file editing, command execution, and iterative development loops.",
+    "pros": [
+      "Concrete example of agentic software engineering",
+      "Easy to inspect and modify for local experiments",
+      "Shows practical orchestration around Claude"
+    ],
+    "cons": [
+      "Experimental architecture may not fit production teams",
+      "Needs strict guardrails before sensitive use"
+    ],
+    "category": "Coding agent"
+  },
+  {
+    "rank": 5,
+    "name": "claude-task-master",
+    "repo_url": "https://github.com/eyaltoledano/claude-task-master",
+    "stars": 7200,
+    "description": "Task planning and project management workflow helpers designed for AI-assisted coding projects.",
+    "pros": [
+      "Turns fuzzy work into trackable implementation tasks",
+      "Pairs well with coding assistants and PR workflows",
+      "Good for teams that want lightweight planning artifacts"
+    ],
+    "cons": [
+      "Planning output still needs human prioritization",
+      "Can add process overhead for small changes"
+    ],
+    "category": "Project workflow"
+  },
+  {
+    "rank": 6,
+    "name": "claude-agents",
+    "repo_url": "https://github.com/vijaythecoder/claude-agents",
+    "stars": 6100,
+    "description": "Reusable agent definitions and patterns for multi-step Claude workflows.",
+    "pros": [
+      "Good starting point for role-specific agents",
+      "Encourages repeatable instructions and responsibilities",
+      "Useful for comparing agent decomposition strategies"
+    ],
+    "cons": [
+      "Agent behavior depends heavily on surrounding tools",
+      "Templates need adaptation to local policies"
+    ],
+    "category": "Agent templates"
+  },
+  {
+    "rank": 7,
+    "name": "claude-prompts",
+    "repo_url": "https://github.com/0xeb/TheBigPromptLibrary",
+    "stars": 5700,
+    "description": "Prompt collections and reusable instruction patterns for Claude and other language models.",
+    "pros": [
+      "Large prompt surface helps with quick ideation",
+      "Examples are easy to copy into experiments",
+      "Useful for comparing prompt framing styles"
+    ],
+    "cons": [
+      "Prompt quality is uneven across entries",
+      "Needs testing against current Claude models"
+    ],
+    "category": "Prompt library"
+  },
+  {
+    "rank": 8,
+    "name": "mcp-servers",
+    "repo_url": "https://github.com/modelcontextprotocol/servers",
+    "stars": 5200,
+    "description": "Reference Model Context Protocol servers that connect Claude-compatible clients to tools and data sources.",
+    "pros": [
+      "Standardizes tool and data access patterns",
+      "Reference implementations speed up integration",
+      "Strong fit for workspace and enterprise workflows"
+    ],
+    "cons": [
+      "Operational security review is required for each server",
+      "Compatibility depends on client and server versions"
+    ],
+    "category": "MCP integration"
+  },
+  {
+    "rank": 9,
+    "name": "claude-squad",
+    "repo_url": "https://github.com/smtg-ai/claude-squad",
+    "stars": 4700,
+    "description": "A terminal workflow for managing multiple Claude coding sessions across tasks and repositories.",
+    "pros": [
+      "Makes parallel coding sessions easier to track",
+      "Fits advanced users who already live in the terminal",
+      "Useful for coordinating independent implementation threads"
+    ],
+    "cons": [
+      "Terminal-first workflow has a learning curve",
+      "Parallel agents increase review and merge burden"
+    ],
+    "category": "Terminal workflow"
+  },
+  {
+    "rank": 10,
+    "name": "claude-code-router",
+    "repo_url": "https://github.com/musistudio/claude-code-router",
+    "stars": 4300,
+    "description": "Routing utilities for Claude Code setups that need configurable model and provider selection.",
+    "pros": [
+      "Helpful for advanced local Claude Code configurations",
+      "Separates routing concerns from day-to-day coding work",
+      "Can simplify experiments across provider settings"
+    ],
+    "cons": [
+      "Adds another moving part to debug",
+      "Requires careful configuration management"
+    ],
+    "category": "Routing"
+  }
+]
