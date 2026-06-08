@@ -17,6 +17,12 @@ app/build/
 build/
 output/
 
+# Machine-specific Gradle config (SDK path)
+local.properties
+
+# Auto-generated on-device test-harness logs (noise; curated evidence kept)
+docs/test-evidence/android-host-test-*
+
 # Local/tool outputs
 .playwright-cli/
 .DS_Store
