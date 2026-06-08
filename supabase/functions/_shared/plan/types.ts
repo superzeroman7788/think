@@ -23,6 +23,8 @@ export type TimeOfDay = "morning" | "midday" | "afternoon" | "evening";
 
 export type TaskSource = "user_voice" | "user_text" | "wechat" | "ai_suggestion" | "routine";
 
+export type TaskStatus = "planned" | "done" | "skipped" | "dropped" | "suggested";
+
 export type AiTaskItem = {
   title: string;
   note?: string;
@@ -41,6 +43,8 @@ export type AiPlanOutput = {
 
 export type PlanTaskResponse = AiTaskItem & {
   source: TaskSource;
+  /** 真任务默认 planned；suggestion_tasks 固定 suggested（未接受）。 */
+  status: TaskStatus;
 };
 
 export type PlanGenerateResponse = {

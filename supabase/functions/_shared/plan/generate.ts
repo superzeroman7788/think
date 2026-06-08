@@ -1,6 +1,7 @@
 import { AllProvidersDownError, createDefaultLLMAdapter } from "../llm/adapter.ts";
 import type { LLMAdapter, LLMMessage } from "../llm/types.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { dedupePlanTasks } from "./dedupe.ts";
 import {
   OUTPUT_SCHEMA_HINT,
   formatHardConstraints,
@@ -17,6 +18,7 @@ import type {
   PlanGenerateResponse,
   PlanTaskResponse,
   TaskSource,
+  TaskStatus,
 } from "./types.ts";
 
 const JSON_ATTEMPT_TEMPS = [0.5, 0.25, 0.15, 0.05] as const;
@@ -54,8 +56,12 @@ function normalizePlannedStarts(
   }));
 }
 
-function withSource(tasks: AiTaskItem[], source: TaskSource): PlanTaskResponse[] {
-  return tasks.map((t) => ({ ...t, source }));
+function withSource(
+  tasks: AiTaskItem[],
+  source: TaskSource,
+  status: TaskStatus = "planned",
+): PlanTaskResponse[] {
+  return tasks.map((t) => ({ ...t, source, status }));
 }
 
 function weekdayIndex(date: string): number {
@@ -211,7 +217,7 @@ export async function completePlanJson(
     messages,
     json_mode: true,
     temperature,
-    max_tokens: 2048,
+    max_tokens: 1024,
   });
   return { content: res.content, provider: res.provider };
 }
@@ -221,8 +227,13 @@ export async function generatePlanWithLlm(
   adapter: LLMAdapter,
   rawInput: string,
   forceInvalidJson = false,
-): Promise<AiPlanOutput & { provider: "deepseek" | "qwen" | "kimi" }> {
+): Promise<
+  AiPlanOutput & { provider: "deepseek" | "qwen" | "kimi"; llmAttempts: number; llmMs: number }
+> {
+  const llmStart = performance.now();
+  let llmAttempts = 0;
   let conversation: LLMMessage[] = messages;
+  llmAttempts++;
   let llm = await completePlanJson(
     conversation,
     JSON_ATTEMPT_TEMPS[0],
@@ -231,7 +242,14 @@ export async function generatePlanWithLlm(
   );
   let validated = parseAndValidatePlanOutput(llm.content, rawInput);
 
-  if (validated.ok) return { ...validated.value, provider: llm.provider };
+  if (validated.ok) {
+    return {
+      ...validated.value,
+      provider: llm.provider,
+      llmAttempts,
+      llmMs: Math.round(performance.now() - llmStart),
+    };
+  }
 
   for (let attempt = 1; attempt < JSON_ATTEMPT_TEMPS.length; attempt++) {
     console.log(
@@ -248,6 +266,7 @@ export async function generatePlanWithLlm(
       },
     ];
 
+    llmAttempts++;
     llm = await completePlanJson(
       conversation,
       JSON_ATTEMPT_TEMPS[attempt],
@@ -258,7 +277,12 @@ export async function generatePlanWithLlm(
 
     if (validated.ok) {
       console.log(`[plan/generate] json validation recovered on attempt=${attempt + 1}`);
-      return { ...validated.value, provider: llm.provider };
+      return {
+        ...validated.value,
+        provider: llm.provider,
+        llmAttempts,
+        llmMs: Math.round(performance.now() - llmStart),
+      };
     }
   }
 
@@ -274,8 +298,10 @@ export async function buildPlanGenerateResponse(
   userTaskSource: TaskSource = "user_voice",
   deps: GeneratePlanDeps = {},
 ): Promise<PlanGenerateResponse> {
+  const t0 = performance.now();
   const adapter = deps.adapter ?? createDefaultLLMAdapter();
 
+  const tProfile = performance.now();
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("memory_enabled, timezone, tone_preference")
@@ -283,18 +309,25 @@ export async function buildPlanGenerateResponse(
     .maybeSingle();
 
   if (profileError) throw profileError;
+  const profileMs = Math.round(performance.now() - tProfile);
 
   const memoryEnabled = profile?.memory_enabled ?? true;
-  const memoryTexts = await loadMemories(supabase, userId, memoryEnabled);
-  const memoriesBullets = formatMemoriesBullets(memoryTexts);
   const timeZone = profile?.timezone ?? "Asia/Shanghai";
-  const routines = await loadTodayRoutines(supabase, userId, req.date);
+
+  const tParallel = performance.now();
+  const [memoryTexts, routines] = await Promise.all([
+    loadMemories(supabase, userId, memoryEnabled),
+    loadTodayRoutines(supabase, userId, req.date),
+  ]);
+  const dbParallelMs = Math.round(performance.now() - tParallel);
+  const memoriesBullets = formatMemoriesBullets(memoryTexts);
 
   const routinePromptBlock = buildRoutinePromptBlock(routines);
   const rawInputWithRoutines = routinePromptBlock
     ? `${req.raw_input}\n\n${routinePromptBlock}`
     : req.raw_input;
 
+  const tPrompt = performance.now();
   const { system, user } = await renderPlanPrompt({
     date: req.date,
     weekday: weekdayZh(req.date),
@@ -302,6 +335,7 @@ export async function buildPlanGenerateResponse(
     hardConstraints: formatHardConstraints(req.hard_constraints),
     rawInput: rawInputWithRoutines,
   });
+  const promptMs = Math.round(performance.now() - tPrompt);
 
   const messages: LLMMessage[] = [
     { role: "system", content: system },
@@ -315,7 +349,15 @@ export async function buildPlanGenerateResponse(
     deps.forceInvalidJson ?? false,
   );
 
-  const aiTasksWithoutRoutineDup = dedupeAiTasksByRoutineTitles(aiOutput.tasks, routines);
+  const tasksBeforeDedupe = aiOutput.tasks.length;
+  const dedupedAiTasks = dedupePlanTasks(aiOutput.tasks);
+  if (dedupedAiTasks.length < tasksBeforeDedupe) {
+    console.log(
+      `[plan/generate] dedupe merged tasks ${tasksBeforeDedupe} -> ${dedupedAiTasks.length}`,
+    );
+  }
+
+  const aiTasksWithoutRoutineDup = dedupeAiTasksByRoutineTitles(dedupedAiTasks, routines);
   const routineTasks = routines.map((routine) => routineToTask(routine, req.date, timeZone));
   const tasks = normalizePlannedStarts(aiTasksWithoutRoutineDup, req.date, timeZone);
   const suggestionTasks = normalizePlannedStarts(
@@ -324,16 +366,35 @@ export async function buildPlanGenerateResponse(
     timeZone,
   );
 
-  return {
+  const response = {
     proposal_id: crypto.randomUUID(),
     provider: aiOutput.provider,
     tasks: [
       ...withSource(routineTasks, "routine"),
       ...withSource(tasks, userTaskSource),
     ],
-    suggestion_tasks: withSource(suggestionTasks, "ai_suggestion"),
+    suggestion_tasks: withSource(suggestionTasks, "ai_suggestion", "suggested"),
     ai_comment: aiOutput.ai_comment,
   };
+
+  console.log(JSON.stringify({
+    event: "plan_generate_timing",
+    user_id: userId,
+    date: req.date,
+    profile_ms: profileMs,
+    db_parallel_ms: dbParallelMs,
+    prompt_ms: promptMs,
+    llm_ms: aiOutput.llmMs,
+    llm_attempts: aiOutput.llmAttempts,
+    tasks_before_dedupe: tasksBeforeDedupe,
+    tasks_after_dedupe: dedupedAiTasks.length,
+    routines: routines.length,
+    memories: memoryTexts.length,
+    tasks_out: response.tasks.length,
+    build_ms: Math.round(performance.now() - t0),
+  }));
+
+  return response;
 }
 
 export { AllProvidersDownError, isTimeoutError };

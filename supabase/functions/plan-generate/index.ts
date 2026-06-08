@@ -8,7 +8,7 @@ import {
 import { setPlanGenerateTemplate } from "../_shared/plan/prompt.ts";
 import { planGenerateTemplate } from "./plan_generate_v1.bundle.ts";
 import type { PlanGenerateRequest } from "../_shared/plan/types.ts";
-import { createUserClient, getBearerToken } from "../_shared/supabase/client.ts";
+import { createUserClient, getBearerToken, getUserIdFromJwt } from "../_shared/supabase/client.ts";
 
 setPlanGenerateTemplate(planGenerateTemplate);
 console.log("[plan/generate] prompt template ready");
@@ -49,16 +49,19 @@ function parseRequest(body: unknown): PlanGenerateRequest | null {
 }
 
 Deno.serve(async (req) => {
+  const t0 = performance.now();
+
   if (req.method !== "POST") {
     return apiError("INVALID_REQUEST", "仅支持 POST");
   }
 
   const token = getBearerToken(req);
   if (!token) return apiError("UNAUTHORIZED");
+  const userId = getUserIdFromJwt(token);
+  if (!userId) return apiError("UNAUTHORIZED");
+  const tAuth = performance.now();
 
   const supabase = createUserClient(req);
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !userData.user) return apiError("UNAUTHORIZED");
 
   let body: unknown;
   try {
@@ -66,6 +69,7 @@ Deno.serve(async (req) => {
   } catch {
     return apiError("INVALID_REQUEST");
   }
+  const tParse = performance.now();
 
   const parsed = parseRequest(body);
   if (!parsed) return apiError("INVALID_REQUEST");
@@ -81,6 +85,7 @@ Deno.serve(async (req) => {
 
   try {
     const fairUse = await consumeFairUse(supabase, parsed.date);
+    const tQuota = performance.now();
     if (!fairUse.allowed) {
       console.log(
         `[plan/generate] fair use exceeded daily_ai_calls=${fairUse.dailyAiCalls}`,
@@ -90,13 +95,33 @@ Deno.serve(async (req) => {
 
     const response = await buildPlanGenerateResponse(
       supabase,
-      userData.user.id,
+      userId,
       parsed,
       "user_voice",
       { forceInvalidJson },
     );
+    const tDone = performance.now();
 
-    return jsonOk(response);
+    const timing = {
+      event: "plan_generate_request_timing",
+      user_id: userId,
+      auth_ms: Math.round(tAuth - t0),
+      parse_ms: Math.round(tParse - tAuth),
+      quota_ms: Math.round(tQuota - tParse),
+      build_ms: Math.round(tDone - tQuota),
+      total_ms: Math.round(tDone - t0),
+      provider: response.provider,
+      tasks: response.tasks.length,
+    };
+    console.log(JSON.stringify(timing));
+
+    const headers = new Headers({ "Content-Type": "application/json" });
+    headers.set(
+      "Server-Timing",
+      `auth;dur=${timing.auth_ms},quota;dur=${timing.quota_ms},build;dur=${timing.build_ms},total;dur=${timing.total_ms}`,
+    );
+
+    return new Response(JSON.stringify(response), { status: 200, headers });
   } catch (error) {
     if (error instanceof Error && error.name === "AI_INVALID_JSON") {
       return apiError("AI_INVALID_JSON");

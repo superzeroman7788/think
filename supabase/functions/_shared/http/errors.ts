@@ -1,11 +1,16 @@
 export type ErrorCode =
   | "FAIR_USE_EXCEEDED"
+  | "ASR_QUOTA_EXCEEDED"
+  | "ASR_NOT_CONFIGURED"
   | "INPUT_TOO_LONG"
   | "AI_TIMEOUT"
   | "AI_INVALID_JSON"
   | "ALL_PROVIDERS_DOWN"
   | "UNAUTHORIZED"
-  | "INVALID_REQUEST";
+  | "INVALID_REQUEST"
+  | "APPLY_STALE"
+  | "APPLY_CONFLICT"
+  | "REVIEW_STALE";
 
 export type ApiErrorBody = {
   error: {
@@ -20,6 +25,16 @@ const ERROR_META: Record<ErrorCode, { message: string; retryable: boolean; statu
     message: "今天的 AI 调用用完了,先用现在的安排继续,明天再帮你优化。",
     retryable: false,
     status: 429,
+  },
+  ASR_QUOTA_EXCEEDED: {
+    message: "今天的语音转写次数用完了,可以先用文字描述今天。",
+    retryable: false,
+    status: 429,
+  },
+  ASR_NOT_CONFIGURED: {
+    message: "语音服务还没准备好,请先用文字输入。",
+    retryable: false,
+    status: 503,
   },
   INPUT_TOO_LONG: {
     message: "输入太长了,请缩短后再试。",
@@ -50,6 +65,21 @@ const ERROR_META: Record<ErrorCode, { message: string; retryable: boolean; statu
     message: "请求参数无效。",
     retryable: false,
     status: 400,
+  },
+  APPLY_STALE: {
+    message: "今天的安排刚才变过了，请看一下新的再确认。",
+    retryable: true,
+    status: 409,
+  },
+  APPLY_CONFLICT: {
+    message: "这次调整没法应用，请重新说一下要怎么改。",
+    retryable: true,
+    status: 409,
+  },
+  REVIEW_STALE: {
+    message: "今天的记录刚才变过了，请看一下新的再确认。",
+    retryable: true,
+    status: 409,
   },
 };
 
