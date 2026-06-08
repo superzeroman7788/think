@@ -1,0 +1,18 @@
+=== TEST 1: prefetch 5x asr-session, usage still 0 until asr-usage ===
+  prefetch 1: session_id=e20c649d-c431-4322-ba07-32d6b0fad1e8 provider=tencent timing=auth;dur=0,parse;dur=3,sign;dur=2,total;dur=4
+  prefetch 2: session_id=b98ae3f6-2821-423e-b0d8-fff90ec470e1 provider=tencent timing=auth;dur=0,parse;dur=3,sign;dur=3,total;dur=5
+  prefetch 3: session_id=6f1f2491-3514-4391-9cf1-de9adf73137a provider=tencent timing=auth;dur=0,parse;dur=2,sign;dur=3,total;dur=5
+  prefetch 4: session_id=327100f8-859d-4d5b-9ab8-3a4cb1e5ad61 provider=tencent timing=auth;dur=0,parse;dur=3,sign;dur=2,total;dur=4
+  prefetch 5: session_id=94221ef3-bfe3-4d72-8d02-cd5e4d4ae148 provider=tencent timing=auth;dur=0,parse;dur=2,sign;dur=2,total;dur=4
+OK first usage counted: {'allowed': True, 'already_counted': False, 'daily_asr_sessions': 1, 'limit': 20}
+
+=== TEST 2: same session_id idempotent ===
+OK idempotent: {'allowed': True, 'already_counted': True, 'daily_asr_sessions': 1, 'limit': 20}
+
+=== TEST 3: second session consumes one more ===
+OK second usage: {'allowed': True, 'already_counted': False, 'daily_asr_sessions': 2, 'limit': 20}
+
+=== TEST 4: prefetch after usage does not auto-increment ===
+OK third usage after extra prefetch: {'allowed': True, 'already_counted': False, 'daily_asr_sessions': 3, 'limit': 20}
+
+ALL EXP-BE-1 quota tests passed

@@ -1,0 +1,5 @@
+session: {"ws_url": "wss://asr.cloud.tencent.com/asr/v2/1438211106?engine_model_type=16k_zh&expired=1780619970&needvad=1&nonce=8006362250&secretid=AKIDASm8MNB99mJenjdMH2EG6jAOvNc6SdbM&timestamp=1780619670&voice_format=1&voice_id=01afca17-8d4e-4ac0-8f62-aa40cda7d3b2&signature=boH2l85ML%2BrNgrdWo9B9a4OVOlQ%3D", "sample_rate": 16000, "expires_at": 1780619970000, "session_id": "8c5447da-67bb-4b1b-8424-9dde95062ccb", "provider": "tencent", "connect_mode": "direct"}
+OK tencent direct session (zero key material in JSON)
+relay status: 502
+OK relay not routable (502)
+ALL production cutover checks passed

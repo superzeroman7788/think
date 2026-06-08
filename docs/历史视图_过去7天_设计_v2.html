@@ -1,0 +1,113 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF5F0; --terra:#B5654A; --clay:#9E5238; --amber:#E29A52;
+    --ink:#3B322D; --muted:#A7998F;
+    --cn:"Noto Sans SC",system-ui,sans-serif; --mono:"JetBrains Mono",monospace;
+    --disp:"Bricolage Grotesque",var(--cn);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--cn);color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 90% at 50% -20%,#FFFCF9,#EFE2D6 60%,#E6D5C7);
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 16px 50px;-webkit-font-smoothing:antialiased;user-select:none}
+  .stage{position:relative;width:330px;height:680px;border-radius:42px;overflow:hidden;background:var(--bg);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 34px 70px -22px rgba(120,72,48,.45),0 10px 26px -12px rgba(120,72,48,.3);
+    border:1px solid rgba(181,101,74,.10);display:flex;flex-direction:column}
+  .scroll{flex:1;overflow-y:auto;padding:20px 20px 14px}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .back{font-size:19px;color:var(--ink);opacity:.7}
+  .title{font-family:var(--disp);font-weight:700;font-size:21px;color:var(--clay)}
+  .lede{font-size:13px;color:#6F635C;margin:6px 0 16px;line-height:1.55}
+  .lede b{color:var(--clay);font-weight:600}
+
+  .chart{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:128px;padding:6px 2px 0;margin-bottom:6px}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+  .barwrap{height:96px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+  .bar{width:62%;display:flex;flex-direction:column;border-radius:7px 7px 3px 3px;overflow:hidden;min-height:6px}
+  .bar .ghost{background:repeating-linear-gradient(135deg,rgba(181,101,74,.14),rgba(181,101,74,.14) 3px,transparent 3px,transparent 6px);border-bottom:1px solid rgba(181,101,74,.18)}
+  .bar .solid{background:linear-gradient(180deg,var(--amber),var(--terra))}
+  .col.today .bar .solid{background:linear-gradient(180deg,#C8743F,var(--clay))}
+  .col.sel .bar{filter:brightness(1.05)}
+  .col .d{font-size:11px;color:var(--muted)} .col.today .d{color:var(--clay);font-weight:700}
+  .col .f{font:600 11px/1 var(--mono);color:var(--terra)} .col.today .f{color:var(--clay)}
+  .axis{border-top:1px solid #EEE0D4;margin:2px 2px 16px}
+
+  .card{background:#fff;border:1px solid #F0E5DB;border-radius:16px;margin-bottom:10px;overflow:hidden;box-shadow:0 6px 16px -13px rgba(120,72,48,.4)}
+  .card.sel{border-color:#E3C3AC;box-shadow:0 10px 24px -14px rgba(181,101,74,.45)}
+  .head{display:flex;align-items:center;gap:11px;padding:14px 15px;cursor:pointer}
+  .head .dt{font-weight:700;font-size:14.5px;color:var(--ink);min-width:72px}
+  .head .dt small{display:block;font:400 11px/1.4 var(--mono);color:var(--muted)}
+  .head .one{flex:1;font-size:13px;color:#6F635C;line-height:1.4}
+  .head .cnt{font:600 12.5px/1 var(--mono);color:var(--clay);background:#F3E4D8;border-radius:999px;padding:6px 11px}
+  .chev{color:var(--muted);font-size:13px;transition:transform .2s}
+  .card.open .chev{transform:rotate(180deg)}
+  .body{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .card.open .body{max-height:440px}
+  .inner{padding:2px 15px 15px;border-top:1px solid #F4EAE0}
+  .trow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed #F1E7DD}
+  .trow:last-child{border-bottom:none}
+  .trow .tm{font:500 11px/1 var(--mono);color:var(--muted);width:42px}
+  .trow .nm{flex:1;font-size:13.5px;color:var(--ink)}
+  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px}
+  .tag.done{background:#F3E4D8;color:var(--clay)}
+  .tag.skip{background:#EFEAE5;color:var(--muted)}
+  .tag.todo{background:#fff;color:var(--muted);border:1px solid #E7DACE}
+  .star{color:var(--amber);font-size:12px;margin-left:-4px}
+  .note{margin-top:12px;background:#FBEFE4;border-radius:12px;padding:11px 13px;font-size:12.5px;color:#5C4A3E;line-height:1.55}
+</style>
+
+<div class="stage">
+  <div class="scroll">
+    <div class="top"><span class="back">←</span><span class="title">过去 7 天</span></div>
+    <div class="lede">这 7 天,你做成了 <b>23 件</b>。看看自己的节奏就好。</div>
+
+    <div class="chart" id="chart"></div>
+    <div class="axis"></div>
+    <div id="cards"></div>
+  </div>
+</div>
+
+<script>
+  // status: done / skip / todo(真正没做)。分母 = done + todo,跳过不算漏。
+  const days = [
+    {d:'周一',date:'6/2',one:'顺顺当当',tasks:[['09:00','晨会','done'],['10:30','写方案','done',1],['14:00','回访客户','done'],['16:00','整理资料','todo'],['18:30','健身','done']],note:'状态在线的一天,整理资料留到了明天。'},
+    {d:'周二',date:'6/3',one:'忙而有序',tasks:[['08:30','晨会','done'],['10:00','需求评审','done',1],['13:00','写文档','done'],['15:00','回消息','done'],['17:00','对接设计','done'],['19:00','健身','done']],note:'六件都落地了,难得这么满还没乱。'},
+    {d:'周三',date:'6/4',one:'安静的一天',tasks:[['10:00','写方案','done',1],['14:00','深度工作','todo'],['16:00','回邮件','done'],['18:00','健身','skip']],note:'慢一点也没关系。深度活儿要不要排早上试试?'},
+    {d:'周四',date:'6/5',one:'稳',tasks:[['09:00','晨会','done'],['11:00','写方案','done',1],['14:00','深度工作','done',1],['16:30','回消息','done'],['18:30','健身','done']],note:'深度活儿排到了早上,果然做成了。'},
+    {d:'周五',date:'6/6',one:'松弛的一天',tasks:[['10:00','收尾方案','done',1],['14:00','约客户','done'],['16:00','回邮件','todo'],['18:00','健身','done']],note:'周五松一点,正常。'},
+    {d:'周六',date:'6/7',one:'健身、方案都顺了',today:true,tasks:[['08:00','健身','done'],['09:00','写文档','done',1],['14:00','逛街','skip'],['18:00','陪客户吃饭','done']],note:'三件做成两件——逛街是主动放掉的,不算漏。健身没被挤掉,挺稳。'},
+  ];
+  const stat=d=>{let done=0,todo=0;d.tasks.forEach(t=>{if(t[2]==='done')done++;else if(t[2]==='todo')todo++;});return{done,owed:done+todo};};
+  const maxOwed=Math.max(...days.map(d=>stat(d).owed));
+
+  const chart=document.getElementById('chart'), cards=document.getElementById('cards');
+  days.forEach((day,i)=>{
+    const s=stat(day); const barH=20+s.owed/maxOwed*74;
+    const solidH=s.owed?barH*s.done/s.owed:barH, ghostH=barH-solidH;
+    const col=document.createElement('div'); col.className='col'+(day.today?' today':'');
+    col.innerHTML=`<div class="f">${s.done}/${s.owed}</div>
+      <div class="barwrap"><div class="bar" style="height:${barH}px">
+        ${ghostH>1?`<div class="ghost" style="height:${ghostH}px"></div>`:''}
+        <div class="solid" style="height:${solidH}px"></div>
+      </div></div>
+      <div class="d">${day.today?'今天':day.d}</div>`;
+    col.onclick=()=>select(i); chart.appendChild(col);
+
+    const c=document.createElement('div'); c.className='card'+(day.today?' open':''); c.dataset.i=i;
+    const rows=day.tasks.map(t=>`<div class="trow"><span class="tm">${t[0]}</span><span class="nm">${t[1]}${t[3]?' <span class="star">★</span>':''}</span><span class="tag ${t[2]}">${t[2]==='done'?'完成':t[2]==='skip'?'跳过':'未做'}</span></div>`).join('');
+    c.innerHTML=`<div class="head"><div class="dt">${day.today?'今天':'周'+'一二三四五六日'[i]}<small>${day.date}</small></div><div class="one">${day.one}</div><div class="cnt">${s.done}/${s.owed}</div><span class="chev">⌄</span></div><div class="body"><div class="inner">${rows}<div class="note">${day.note}</div></div></div>`;
+    c.querySelector('.head').onclick=()=>c.classList.toggle('open');
+    cards.appendChild(c);
+  });
+  function select(i){
+    document.querySelectorAll('.col').forEach((c,j)=>c.classList.toggle('sel',j===i));
+    document.querySelectorAll('.card').forEach((c,j)=>{const on=j===i;c.classList.toggle('sel',on);if(on)c.classList.add('open');});
+    document.querySelectorAll('.card')[i].scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+</script>

@@ -1,0 +1,143 @@
+
+========== setup ==========
+USER_ID=2ec80be8-f252-4331-a109-b3252a5141cb
+RUN_ID=b5b80d7f-3f14-47b7-b3c4-06fe54905df8 MAIL_ID=222d91a5-66b2-442b-ac4a-4eb6fab6915c
+
+========== TEST 1 — propose 无 JWT → 401 ==========
+HTTP=401
+
+========== TEST 2 — propose 推跑步、刷邮件不做了 ==========
+HTTP=200
+{
+  "revision_id": "e1bd8d83-f37b-4fb6-95a1-45f798138541",
+  "provider": "deepseek",
+  "applicable": true,
+  "reject_reason": null,
+  "summary": "将跑步推迟一小时，取消刷邮件。",
+  "revisions": [
+    {
+      "task_id": "b5b80d7f-3f14-47b7-b3c4-06fe54905df8",
+      "title": "跑步",
+      "change": "moved",
+      "started": false,
+      "before": {
+        "planned_start": "2026-06-07T18:00:00+08:00",
+        "planned_duration": 30,
+        "status": "planned",
+        "actual_start": null
+      },
+      "after": {
+        "planned_start": "2026-06-07T19:00:00+08:00",
+        "planned_duration": 30,
+        "status": "planned",
+        "actual_start": null
+      }
+    },
+    {
+      "task_id": "222d91a5-66b2-442b-ac4a-4eb6fab6915c",
+      "title": "刷邮件",
+      "change": "dropped",
+      "started": false,
+      "before": {
+        "planned_start": "2026-06-07T16:00:00+08:00",
+        "planned_duration": 20,
+        "status": "planned",
+        "actual_start": null
+      },
+      "after": {
+        "planned_start": null,
+        "planned_duration": null,
+        "status": "dropped",
+        "actual_start": null
+      }
+    }
+  ],
+  "added": [],
+  "warnings": []
+}
+
+========== TEST 3 — apply moved+dropped ==========
+HTTP=200
+{
+  "ok": true,
+  "applied_count": 2,
+  "tasks": [
+    {
+      "id": "779d73a0-a014-466c-9cca-af027e6a21ec",
+      "title": "写报告",
+      "note": null,
+      "planned_start": "2026-06-07T01:00:00+00:00",
+      "planned_duration": 60,
+      "important": true,
+      "status": "done",
+      "actual_start": null,
+      "actual_end": null,
+      "task_type": null,
+      "time_of_day": null
+    },
+    {
+      "id": "222d91a5-66b2-442b-ac4a-4eb6fab6915c",
+      "title": "刷邮件",
+      "note": null,
+      "planned_start": "2026-06-07T08:00:00+00:00",
+      "planned_duration": 20,
+      "important": false,
+      "status": "dropped",
+      "actual_start": null,
+      "actual_end": null,
+      "task_type": null,
+      "time_of_day": null
+    },
+    {
+      "id": "b5b80d7f-3f14-47b7-b3c4-06fe54905df8",
+      "title": "跑步",
+      "note": null,
+      "planned_start": "2026-06-07T11:00:00+00:00",
+      "planned_duration": 30,
+      "important": false,
+      "status": "planned",
+      "actual_start": null,
+      "actual_end": null,
+      "task_type": null,
+      "time_of_day": null
+    }
+  ]
+}
+
+========== TEST 4 — 重复 apply → APPLY_CONFLICT 409 ==========
+HTTP=409 body={"error":{"code":"APPLY_CONFLICT","message":"这次调整没法应用，请重新说一下要怎么改。","retryable":true}}
+
+========== TEST 5 — 变当前任务(actual_start 非空)仍可 moved ==========
+HTTP=200
+{
+  "revision_id": "1e741f8a-9dd0-4b15-9472-1ad89e71e113",
+  "provider": "deepseek",
+  "applicable": true,
+  "reject_reason": null,
+  "summary": "将“进行中”任务推迟到下午四点开始。",
+  "revisions": [
+    {
+      "task_id": "006664e6-a595-490e-9e54-33c176295bba",
+      "title": "进行中",
+      "change": "moved",
+      "started": true,
+      "before": {
+        "planned_start": "2026-06-07T14:00:00+08:00",
+        "planned_duration": 45,
+        "status": "planned",
+        "actual_start": "2026-06-07T14:05:00+08:00"
+      },
+      "after": {
+        "planned_start": "2026-06-07T16:00:00+08:00",
+        "planned_duration": 45,
+        "status": "planned",
+        "actual_start": null
+      }
+    }
+  ],
+  "added": [],
+  "warnings": []
+}
+
+========== TEST 6 — 新增计划外任务 added（无 planned 也可） ==========
+HTTP=200

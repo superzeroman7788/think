@@ -1,0 +1,123 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF5F0; --terra:#B5654A; --clay:#9E5238; --amber:#E29A52;
+    --ink:#3B322D; --muted:#A7998F;
+    --cn:"Noto Sans SC",system-ui,sans-serif; --mono:"JetBrains Mono",monospace;
+    --disp:"Bricolage Grotesque",var(--cn);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--cn);color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 90% at 50% -20%,#FFFCF9,#EFE2D6 60%,#E6D5C7);
+    display:flex;flex-direction:column;align-items:center;gap:22px;padding:30px 16px 56px;-webkit-font-smoothing:antialiased;user-select:none}
+  .stage{position:relative;width:302px;height:600px;border-radius:44px;overflow:hidden;background:var(--bg);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 34px 70px -22px rgba(120,72,48,.45),0 10px 26px -12px rgba(120,72,48,.3);
+    border:1px solid rgba(181,101,74,.10)}
+
+  /* 背景:一份"今天的计划"(用来看遮挡) */
+  .content{position:absolute;inset:0;padding:46px 20px 0;z-index:1}
+  .h{font-family:var(--disp);font-weight:600;font-size:19px;color:var(--clay);margin-bottom:14px}
+  .row{display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:9px;border-radius:14px;
+    background:#fff;border:1px solid #F0E5DB;box-shadow:0 6px 16px -12px rgba(120,72,48,.4)}
+  .row .tm{font:500 12px/1 var(--mono);color:var(--clay);width:42px}
+  .row .nm{font-size:14px;color:var(--ink)}
+  .row .st{margin-left:auto;font-size:13px;color:var(--amber)}
+
+  /* 听音时的底部柔光罩(仅底部模式) */
+  .scrim{position:absolute;left:0;right:0;bottom:0;height:230px;z-index:2;pointer-events:none;opacity:0;transition:.2s;
+    background:linear-gradient(0deg,rgba(251,245,240,.96) 30%,rgba(251,245,240,.6) 70%,transparent)}
+  .listening.pos-bottom .scrim{opacity:1}
+
+  /* 反馈组(波形 + 文案) */
+  .fb{position:absolute;left:0;right:0;z-index:3;display:flex;flex-direction:column;align-items:center;gap:12px;
+    opacity:0;pointer-events:none;transition:.16s ease}
+  .listening .fb{opacity:1}
+  .pos-bottom .fb{bottom:140px;transform:translateY(8px)}
+  .listening.pos-bottom .fb{transform:none}
+  .pos-center .fb{top:46%;transform:translateY(-50%) scale(.92)}
+  .listening.pos-center .fb{transform:translateY(-50%) scale(1)}
+  /* 居中模式给个卡片底,凸显"它盖住了内容" */
+  .pos-center .fb{background:rgba(251,245,240,.92);backdrop-filter:blur(3px);padding:22px 20px;border-radius:20px;
+    box-shadow:0 14px 40px -16px rgba(120,72,48,.5);width:230px}
+
+  .wave{display:flex;align-items:center;gap:4px;height:64px}
+  .bar{width:4px;height:8px;border-radius:99px;background:linear-gradient(180deg,var(--amber),var(--terra));transform:scaleY(.18);transform-origin:center}
+  .lt{font-size:14px;color:var(--clay);font-weight:500}
+  .ch{font-size:11px;color:var(--muted)}
+
+  /* 麦克风 */
+  .micwrap{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);z-index:4;width:88px;height:88px;display:flex;align-items:center;justify-content:center}
+  .pulse{position:absolute;inset:0;border-radius:50%;border:2px solid var(--terra);opacity:0;pointer-events:none}
+  .listening .pulse{animation:pulse 1.6s ease-out infinite}
+  @keyframes pulse{0%{opacity:.5;transform:scale(.85)}100%{opacity:0;transform:scale(2.1)}}
+  .mic{position:relative;width:72px;height:72px;border-radius:50%;background:var(--terra);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;
+    box-shadow:0 10px 24px -8px rgba(181,101,74,.6);transition:transform .12s cubic-bezier(.34,1.56,.64,1),background .15s}
+  .listening .mic{transform:scale(1.12);background:var(--clay)}
+
+  .legend{width:302px;display:flex;flex-direction:column;gap:12px;text-align:center}
+  .toggle{display:flex;gap:6px;background:#fff;padding:5px;border-radius:999px;border:1px solid #EFE2D8;box-shadow:0 8px 20px -14px rgba(120,72,48,.4)}
+  .toggle button{flex:1;padding:10px;border:none;border-radius:999px;background:transparent;color:var(--muted);font-family:var(--cn);font-size:13px;font-weight:500;cursor:pointer;transition:.25s}
+  .toggle button.on{background:var(--terra);color:#fff;box-shadow:0 6px 14px -8px rgba(181,101,74,.7)}
+  .note{font-size:12.5px;line-height:1.7;color:#6F635C} .note b{color:var(--terra)}
+</style>
+
+<div class="stage pos-bottom" id="stage">
+  <div class="content">
+    <div class="h">今天</div>
+    <div class="row"><span class="tm">08:30</span><span class="nm">晨会</span></div>
+    <div class="row"><span class="tm">10:00</span><span class="nm">写方案初稿</span><span class="st">★</span></div>
+    <div class="row"><span class="tm">12:00</span><span class="nm">午饭 & 散步</span></div>
+    <div class="row"><span class="tm">14:00</span><span class="nm">深度工作块</span><span class="st">★</span></div>
+    <div class="row"><span class="tm">16:00</span><span class="nm">回消息</span></div>
+    <div class="row"><span class="tm">18:30</span><span class="nm">健身</span></div>
+  </div>
+
+  <div class="scrim"></div>
+
+  <div class="fb">
+    <div class="wave" id="wave"></div>
+    <div class="lt">在听,说吧</div>
+    <div class="ch">松开结束 · 上滑取消</div>
+  </div>
+
+  <div class="micwrap"><div class="pulse"></div><div class="mic" id="mic">🎤</div></div>
+</div>
+
+<div class="legend">
+  <div class="toggle">
+    <button id="bb" class="on" onclick="setPos('bottom')">底部(推荐)</button>
+    <button id="bc" onclick="setPos('center')">居中(会遮挡)</button>
+  </div>
+  <div class="note">
+    <b>按住麦克风</b>,再切两个模式看:<b>底部</b>——波形贴着麦克风、上面的计划照常可见(只在底部加一层柔光罩,不糊内容);<b>居中</b>——糊住中间几行,白天/复盘时正想看的就被盖了。所以放底部。
+  </div>
+</div>
+
+<script>
+  const stage=document.getElementById('stage'), mic=document.getElementById('mic'), waveEl=document.getElementById('wave'),
+        bb=document.getElementById('bb'), bc=document.getElementById('bc');
+  let listening=false, raf, t0=0, amp=0, bars=[]; const N=22;
+  for(let i=0;i<N;i++){ const b=document.createElement('div'); b.className='bar'; waveEl.appendChild(b); bars.push(b); }
+
+  function loop(t){
+    if(!listening)return; const sec=(t-t0)/1000;
+    const target=0.28+0.46*Math.abs(Math.sin(sec*2.6))+0.18*Math.random()*Math.abs(Math.sin(sec*7));
+    amp+=(target-amp)*0.35;
+    for(let i=0;i<N;i++){ const c=1-Math.abs(i-(N-1)/2)/((N-1)/2);
+      const v=0.16+amp*(0.4+0.6*c)*(0.6+0.6*Math.abs(Math.sin(sec*5+i*0.6)));
+      bars[i].style.transform='scaleY('+Math.min(1,v).toFixed(3)+')'; }
+    raf=requestAnimationFrame(loop);
+  }
+  function start(e){ if(e&&e.cancelable)e.preventDefault(); if(listening)return; listening=true;
+    stage.classList.add('listening'); t0=performance.now(); amp=0; raf=requestAnimationFrame(loop); }
+  function stop(){ if(!listening)return; listening=false; cancelAnimationFrame(raf);
+    stage.classList.remove('listening'); bars.forEach(b=>b.style.transform='scaleY(.18)'); }
+  mic.addEventListener('pointerdown',start); window.addEventListener('pointerup',stop); mic.addEventListener('pointercancel',stop);
+
+  function setPos(p){ stage.classList.remove('pos-bottom','pos-center'); stage.classList.add('pos-'+p);
+    bb.classList.toggle('on',p==='bottom'); bc.classList.toggle('on',p==='center'); }
+</script>

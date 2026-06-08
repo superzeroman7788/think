@@ -1,0 +1,58 @@
+{
+  "ts": "20260607T002813Z",
+  "pcm_bytes": 75252,
+  "pcm_duration_ms": 2351.6,
+  "chunk_bytes": 1280,
+  "chunk_interval_ms": 40.0,
+  "network": {
+    "host": "asr.cloud.tencent.com",
+    "test_from": {
+      "ip": "1.172.166.46",
+      "hostname": "1-172-166-46.dynamic-ip.hinet.net",
+      "city": "Kaohsiung",
+      "region": "Takao",
+      "country": "TW",
+      "loc": "22.6163,120.3133",
+      "org": "AS3462 Data Communication Business Group",
+      "timezone": "Asia/Taipei",
+      "readme": "https://ipinfo.io/missingauth"
+    },
+    "resolved_ip": "120.53.97.39",
+    "ping_raw": [
+      "5 packets transmitted, 5 packets received, 0.0% packet loss",
+      "round-trip min/avg/max/stddev = 10.993/11.753/12.334/0.487 ms"
+    ],
+    "tls_curl": "dns:0.001779 connect:0.013944 tls:0.038354 total:0.049028"
+  },
+  "parallel_fe_like": {
+    "cold": {
+      "warm": false,
+      "connect_ms": 267.8,
+      "mode": "parallel_fe_like",
+      "wall_ms_to_first_partial": 687.3,
+      "audio_ms_sent_at_first_partial": 680.0,
+      "total_wall_ms": 2568.4
+    },
+    "warm": {
+      "warm": true,
+      "connect_ms": 160.8,
+      "mode": "parallel_fe_like",
+      "wall_ms_to_first_partial": 518.7,
+      "audio_ms_sent_at_first_partial": 520.0,
+      "total_wall_ms": 2505.6
+    }
+  },
+  "sync_send_wait_hot": {
+    "warm": true,
+    "connect_ms": 156.0,
+    "mode": "sync_send_wait",
+    "wall_ms_to_first_partial": 5026.2,
+    "audio_ms_sent_at_first_partial": 400.0,
+    "total_wall_ms": 30298.9
+  },
+  "analysis_zh": {
+    "sync_inflates_wall_clock": true
+  },
+  "warm_connect_savings_ms": 107.0,
+  "warm_partial_savings_ms": 168.6
+}

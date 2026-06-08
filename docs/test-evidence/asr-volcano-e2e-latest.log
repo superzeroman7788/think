@@ -1,0 +1,21 @@
+=== Volcano relay E2E ===
+{"ws_url": "wss://mpxdworxojotiwjxdeds.supabase.co/functions/v1/asr-relay?session_id=3eefa634-82a3-4562-9acd-e515b60b4588", "sample_rate": 16000, "expires_at": 1780616739667, "session_id": "3eefa634-82a3-4562-9acd-e515b60b4588", "provider": "volcano", "connect_mode": "relay"}
+relay msg: {'code': 0, 'message': 'connected'}
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你', 'slice_type': 1}}
+partial/final: '你'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好', 'slice_type': 1}}
+partial/final: '你好'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好', 'slice_type': 1}}
+partial/final: '你好'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好今', 'slice_type': 1}}
+partial/final: '你好今'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好今天', 'slice_type': 1}}
+partial/final: '你好今天'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好今天天', 'slice_type': 1}}
+partial/final: '你好今天天'
+relay msg: {'code': 0, 'final': 0, 'result': {'voice_text_str': '你好今天天', 'slice_type': 1}}
+partial/final: '你好今天天'
+relay msg: {'code': 0, 'final': 1, 'result': {'voice_text_str': '你好今天天气不错', 'slice_type': 2}}
+partial/final: '你好今天天气不错'
+transcript: '你好今天天气不错'
+OK volcano relay transcription

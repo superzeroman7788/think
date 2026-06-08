@@ -1,0 +1,217 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF5F0; --terra:#B5654A; --clay:#9E5238;
+    --ink:#3B322D; --muted:#A7998F; --amber:#D98A3A;
+    --cn:"Noto Sans SC",system-ui,sans-serif;
+    --mono:"JetBrains Mono",monospace;
+    --disp:"Bricolage Grotesque",var(--cn);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--cn);color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 90% at 50% -20%,#FFFCF9,#EFE2D6 60%,#E6D5C7);
+    display:flex;flex-direction:column;align-items:center;gap:24px;padding:30px 16px 56px;-webkit-font-smoothing:antialiased}
+  .stage{position:relative;width:302px;height:638px;border-radius:44px;overflow:hidden;background:var(--bg);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 34px 70px -22px rgba(120,72,48,.45),0 10px 26px -12px rgba(120,72,48,.3);
+    border:1px solid rgba(181,101,74,.10);isolation:isolate}
+
+  /* 潮水 */
+  .ocean{position:absolute;left:0;right:0;bottom:0;z-index:1;height:calc(var(--level,.20) * 100%);
+    transition:height 1.8s cubic-bezier(.4,0,.25,1);animation:breathe 9s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.82}50%{opacity:1}}
+  .body{position:absolute;inset:0;background:linear-gradient(0deg,
+    rgba(190,116,86,.34) 0%, rgba(202,138,106,.22) 40%, rgba(218,166,134,.10) 74%, transparent 100%)}
+  .ocean.dusk .body{background:linear-gradient(0deg,
+    rgba(150,84,60,.40) 0%, rgba(174,108,80,.26) 44%, rgba(200,142,112,.11) 80%, transparent 100%)}
+  .glow{position:absolute;border-radius:50%;filter:blur(28px);transition:background 1s ease}
+  .g1{width:240px;height:130px;left:-40px;top:-34px;background:rgba(224,172,142,.30);animation:drift1 24s ease-in-out infinite}
+  .g2{width:220px;height:110px;right:-46px;top:-12px;background:rgba(202,134,104,.24);animation:drift2 30s ease-in-out infinite}
+  .stage.important .g1{background:rgba(230,176,132,.40)} .stage.important .g2{background:rgba(212,140,96,.32)}
+  @keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(46px,-12px)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,-8px)}}
+  .surface{position:absolute;left:0;right:0;top:-16px;height:44px;overflow:visible;filter:blur(4px);opacity:.6}
+  .wave{position:absolute;bottom:0;left:0;width:220%;height:44px;animation:roll 24s linear infinite}
+  .wave path{fill:rgba(222,170,140,.6)} @keyframes roll{from{transform:translateX(0)}to{transform:translateX(-45.45%)}}
+  .grain{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+  .ui{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;padding:20px 20px 0}
+  .statusbar{display:flex;justify-content:space-between;font:500 11px/1 var(--mono);color:var(--muted);opacity:.8;padding:2px 4px 12px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 2px}
+  .back{font-size:18px;opacity:.7}.today{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:.5px}
+  .prog{font:500 12px/1 var(--mono);color:var(--clay);background:rgba(255,255,255,.72);backdrop-filter:blur(4px);padding:6px 12px;border-radius:999px;border:1px solid rgba(181,101,74,.12)}
+
+  .center{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding-bottom:26px}
+  .halo{position:absolute;width:232px;height:232px;border-radius:50%;filter:blur(34px);
+    background:radial-gradient(closest-side,rgba(231,170,108,.30),transparent);opacity:0;transition:opacity .6s;z-index:-1}
+  .stage.important .halo{opacity:1}
+  .now{font-size:11px;letter-spacing:6px;color:var(--clay);opacity:.7;font-weight:500}
+  .star-l{display:none;color:var(--amber);font-size:15px;letter-spacing:2px;font-weight:600}
+  .stage.important .star-l{display:block}
+
+  /* ===== 星环 ===== */
+  .ringwrap{position:relative;width:200px;height:200px}
+  .ring{position:absolute;inset:0;width:200px;height:200px}
+  .ring .track{fill:none;stroke:url(#tg);stroke-width:1.9;filter:drop-shadow(0 1px 5px rgba(181,101,74,.14))}  /* 主轨 */
+  .ring .o-out{fill:none;stroke:rgba(181,101,74,.10);stroke-width:1}    /* 外伴轨(双环) */
+  /* 暖星尘 */
+  .stars{position:absolute;inset:0}
+  .star{position:absolute;background:#F6DCAE;
+    clip-path:polygon(50% 0%,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0% 50%,39% 39%);
+    filter:drop-shadow(0 0 3px rgba(244,206,150,.8));
+    animation:tw var(--d,3.6s) ease-in-out infinite;animation-delay:var(--dl,0s)}
+  @keyframes tw{0%,100%{opacity:.3;transform:scale(.8) rotate(var(--r,0deg))}50%{opacity:1;transform:scale(1.12) rotate(var(--r,0deg))}}
+  /* 过点:整圈轻轻发亮 */
+  .fullglow{position:absolute;inset:0;width:200px;height:200px;opacity:0;transition:opacity 1s ease}
+  .fullglow circle{fill:none;stroke:rgba(212,140,96,.45);stroke-width:2.4;filter:drop-shadow(0 0 6px rgba(212,140,96,.5))}
+  .stage.dusk .fullglow{opacity:1}
+  /* 彗星(主轨上) */
+  .comet{position:absolute;inset:0;border-radius:50%;transform:rotate(calc(var(--p,0)*360deg));
+    transition:transform 1.8s cubic-bezier(.4,0,.25,1);
+    background:conic-gradient(from 0deg,
+      rgba(226,154,82,0) 0deg, rgba(226,154,82,0) 275deg,
+      rgba(232,160,86,.14) 312deg, rgba(240,176,104,.44) 344deg, rgba(255,226,174,.9) 360deg);
+    -webkit-mask:radial-gradient(closest-side,#0000 calc(100% - 11px),#000 calc(100% - 11px),#000 calc(100% - 6px),#0000 calc(100% - 6px));
+    mask:radial-gradient(closest-side,#0000 calc(100% - 11px),#000 calc(100% - 11px),#000 calc(100% - 6px),#0000 calc(100% - 6px))}
+  .dotwrap{position:absolute;inset:0;transform-origin:50% 50%;transform:rotate(calc(var(--p,0)*360deg));
+    transition:transform 1.8s cubic-bezier(.4,0,.25,1)}
+  .dot{position:absolute;top:2px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;
+    background:radial-gradient(circle,#FFF7EC 0%,#FCD08C 32%,#EE9C42 64%,rgba(238,156,66,0) 100%);
+    box-shadow:0 0 7px 2px rgba(255,231,176,.95),0 0 16px 5px rgba(238,156,66,.6),0 0 30px 11px rgba(226,154,82,.34);
+    animation:pulse 3.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.97}50%{transform:scale(1.16);opacity:1}}
+  .ringtext{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+  .rtime{font:500 26px/1 var(--mono);color:var(--clay)}
+  .rem{font:400 12px/1 var(--cn);color:var(--ink);opacity:.6;transition:color .5s}
+  .rem.near{color:var(--clay);opacity:.85}
+  .rem.bump{animation:lift .5s ease} @keyframes lift{0%{transform:translateY(0)}42%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+
+  .title{font-family:var(--disp);font-weight:800;font-size:28px;letter-spacing:1px;text-align:center;
+    text-shadow:0 2px 24px rgba(255,251,247,.96),0 1px 3px rgba(255,251,247,.92);animation:float 8s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+  .footer{padding:0 2px 22px}
+  .actions{display:flex;gap:11px;margin-bottom:22px}
+  .divider{height:1px;margin:0 38px 22px;background:linear-gradient(90deg,transparent,rgba(120,80,60,.16),transparent)}
+  .btn{flex:1;text-align:center;padding:15px 0;border-radius:999px;font-size:15px;box-shadow:0 8px 20px -10px rgba(181,101,74,.5)}
+  .skip{background:rgba(255,255,255,.9);color:var(--ink);backdrop-filter:blur(6px)} .done{background:#fff;color:var(--clay);font-weight:700}
+  .voice{padding:11px;border-radius:16px;background:rgba(255,255,255,.58);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.5);font-size:12px;color:var(--ink);opacity:.68;text-align:center}
+
+  .legend{width:302px;display:flex;flex-direction:column;gap:11px;text-align:center}
+  .toggle{display:flex;gap:6px;background:#fff;padding:5px;border-radius:999px;border:1px solid #EFE2D8;box-shadow:0 8px 20px -14px rgba(120,72,48,.4)}
+  .toggle button{flex:1;padding:9px 4px;border:none;border-radius:999px;background:transparent;color:var(--muted);font-family:var(--cn);font-size:12px;font-weight:500;cursor:pointer;transition:.25s}
+  .toggle button.on{background:var(--terra);color:#fff;box-shadow:0 6px 14px -8px rgba(181,101,74,.7)}
+  .toggle button.star.on{background:var(--amber);box-shadow:0 6px 14px -8px rgba(217,138,58,.7)}
+  .note{font-size:12.5px;line-height:1.7;color:#6F635C} .note b{color:var(--terra)}
+</style>
+
+<div class="stage" id="stage">
+  <div class="ocean" id="ocean">
+    <div class="body"></div><div class="glow g1"></div><div class="glow g2"></div>
+    <div class="surface"><svg class="wave" viewBox="0 0 100 44" preserveAspectRatio="none"><path d="M0,20 C10,9 16,9 25,20 C34,31 41,31 50,20 C60,9 66,9 75,20 C84,31 91,31 100,20 L100,44 L0,44 Z"/></svg></div>
+  </div>
+  <div class="grain"></div>
+
+  <div class="ui">
+    <div class="statusbar"><span>13:47</span><span>▦ ▮ ▰</span></div>
+    <div class="topbar"><span class="back">←</span><span class="today">今天</span><span class="prog">5 / 13</span></div>
+    <div class="center" id="center">
+      <div class="halo"></div>
+      <div class="now">现在</div>
+      <div class="star-l">★ 重要</div>
+      <div class="ringwrap">
+        <svg class="ring" viewBox="0 0 100 100">
+          <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#B5654A" stop-opacity=".05"/>
+            <stop offset="55%" stop-color="#B5654A" stop-opacity=".12"/>
+            <stop offset="100%" stop-color="#B5654A" stop-opacity=".30"/>
+          </linearGradient></defs>
+          <circle class="o-out" cx="50" cy="50" r="48"/>
+          <circle class="track" cx="50" cy="50" r="44"/>
+        </svg>
+        <div class="stars" id="stars"></div>
+        <svg class="fullglow" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44"/></svg>
+        <div class="comet"></div>
+        <div class="dotwrap"><div class="dot"></div></div>
+        <div class="ringtext"><div class="rtime">12:00</div><div class="rem" id="rem">还剩约 60 分</div></div>
+      </div>
+      <div class="title">中午去吃饭</div>
+    </div>
+    <div class="footer">
+      <div class="actions"><div class="btn skip">跳过</div><div class="btn done">完成</div></div>
+      <div class="divider"></div>
+      <div class="voice">🎤 想调整今天?和我说一声</div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="toggle">
+    <button id="b1" class="on" onclick="setState('progress')">进行中</button>
+    <button id="b2" onclick="setState('overdue')">过点了</button>
+    <button id="bs" class="star" onclick="toggleStar()">★ 重要</button>
+  </div>
+  <div class="note">
+    <b>星环(双环 · 克制)</b>:两道同心暖轨 + 几颗散落的<b>小星星</b>(四角星形、轻轻闪),彗星在主轨上绕。星点少而干净,不再是脏脏的小点;全暖色,守在暖陶土世界里。
+  </div>
+</div>
+
+<script>
+  const ocean=document.getElementById('ocean'), rem=document.getElementById('rem'),
+        stage=document.getElementById('stage'), starsEl=document.getElementById('stars'),
+        b1=document.getElementById('b1'), b2=document.getElementById('b2'), bs=document.getElementById('bs');
+  let raf, lastMin=-1;
+
+  // 生成暖星尘:沿环带散布(半径有抖动),大小/闪烁各异
+  (function makeStars(){
+    const N=8, cx=100, cy=100;              // 克制:少而干净
+    for(let i=0;i<N;i++){
+      const ang=(i/N)*Math.PI*2 + (Math.random()-.5)*0.30;
+      const R=80 + (Math.random()-.5)*22;    // 散在双环带上
+      const x=cx + R*Math.sin(ang), y=cy - R*Math.cos(ang);
+      const sz=6 + Math.random()*6;          // 6–12px,看得出是星形
+      const s=document.createElement('div'); s.className='star';
+      s.style.width=s.style.height=sz.toFixed(1)+'px';
+      s.style.left=(x-sz/2).toFixed(1)+'px'; s.style.top=(y-sz/2).toFixed(1)+'px';
+      s.style.setProperty('--d',(3.2+Math.random()*3.2).toFixed(1)+'s');
+      s.style.setProperty('--dl',(Math.random()*4).toFixed(1)+'s');
+      s.style.setProperty('--r',(Math.random()*90-45).toFixed(0)+'deg');
+      starsEl.appendChild(s);
+    }
+  })();
+
+  function levelFor(min){
+    if(min>=30) return .20 + (60-min)/30*.30;
+    if(min>=10) return .50 + (30-min)/20*.28;
+    return .78 + (10-min)/10*.10;
+  }
+  function setRem(min){
+    rem.textContent=(min>0&&min<=10)?'快到时间了':(min>0?('还剩约 '+min+' 分'):'时间到');
+    rem.classList.toggle('near',min<=10);
+    if(min!==lastMin){rem.classList.remove('bump');void rem.offsetWidth;rem.classList.add('bump');lastMin=min;}
+  }
+  function run(fromMin,duration){
+    cancelAnimationFrame(raf); const t0=performance.now();
+    (function step(t){
+      const k=Math.min(1,(t-t0)/duration), m=Math.round(fromMin*(1-k)+2*k), p=(60-m)/60;
+      setRem(m); ocean.style.setProperty('--level',levelFor(m).toFixed(3)); stage.style.setProperty('--p',p.toFixed(3));
+      if(k<1) raf=requestAnimationFrame(step);
+    })(t0);
+  }
+  function setState(s){
+    if(s==='progress'){ b1.classList.add('on');b2.classList.remove('on');ocean.classList.remove('dusk');stage.classList.remove('dusk');
+      lastMin=-1;setRem(60);ocean.style.setProperty('--level',.20);stage.style.setProperty('--p',0);
+      setTimeout(()=>run(60,15000),400);
+    }else{ cancelAnimationFrame(raf);b2.classList.add('on');b1.classList.remove('on');
+      ocean.classList.add('dusk');stage.classList.add('dusk');
+      ocean.style.setProperty('--level',.93);stage.style.setProperty('--p',1);
+      rem.textContent='已过点';rem.classList.add('near'); }
+  }
+  function toggleStar(){ const on=stage.classList.toggle('important'); bs.classList.toggle('on',on); }
+  setRem(60); ocean.style.setProperty('--level',.20); stage.style.setProperty('--p',0);
+  setTimeout(()=>run(60,15000),600);
+</script>

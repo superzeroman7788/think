@@ -1,0 +1,108 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF5F0; --terra:#B5654A; --clay:#9E5238; --amber:#E29A52;
+    --ink:#3B322D; --muted:#A7998F;
+    --cn:"Noto Sans SC",system-ui,sans-serif; --mono:"JetBrains Mono",monospace;
+    --disp:"Bricolage Grotesque",var(--cn);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--cn);color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 90% at 50% -20%,#FFFCF9,#EFE2D6 60%,#E6D5C7);
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 16px 50px;-webkit-font-smoothing:antialiased;user-select:none}
+  .stage{position:relative;width:330px;height:640px;border-radius:42px;overflow:hidden;background:var(--bg);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 34px 70px -22px rgba(120,72,48,.45),0 10px 26px -12px rgba(120,72,48,.3);
+    border:1px solid rgba(181,101,74,.10);display:flex;flex-direction:column}
+
+  .scroll{flex:1;overflow-y:auto;padding:20px 20px 12px}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .back{font-size:19px;color:var(--ink);opacity:.7}
+  .title{font-family:var(--disp);font-weight:700;font-size:21px;color:var(--clay)}
+  .sub{font-size:13px;color:var(--muted);margin:8px 0 22px}
+
+  .sec{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--ink);margin:24px 0 12px}
+  .sec .n{width:22px;height:22px;border-radius:50%;background:var(--terra);color:#fff;font:600 12px/22px var(--cn);text-align:center}
+  .sec:first-child{margin-top:0}
+
+  /* ① 审核 */
+  .row{display:flex;align-items:center;gap:12px;padding:13px 15px;margin-bottom:9px;border-radius:15px;
+    background:#fff;border:1px solid #F0E5DB;box-shadow:0 6px 16px -13px rgba(120,72,48,.4);cursor:pointer}
+  .row .nm{font-size:14.5px;color:var(--ink)}
+  .row .tm{font:500 11px/1 var(--mono);color:var(--muted);margin-top:5px}
+  .row .col{flex:1}
+  .pill{font-size:12.5px;padding:6px 14px;border-radius:999px;font-weight:600;transition:.2s}
+  .pill.done{background:#F3E4D8;color:var(--clay)}
+  .pill.skip{background:#EFEAE5;color:var(--muted)}
+  .pill.todo{background:#fff;color:var(--muted);border:1px solid #E7DACE}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+  /* ② 今天的提醒 — 两块:夸+收尾 / 提醒+建议 */
+  .remind{border-radius:18px;overflow:hidden;border:1px solid #F0DFD2;box-shadow:0 8px 22px -16px rgba(120,72,48,.5)}
+  .remind .part{padding:15px 16px;font-size:14px;line-height:1.6}
+  .remind .praise{background:linear-gradient(180deg,#FBEFE4,#F8E7D8);color:#5C4A3E}
+  .remind .praise b{color:var(--clay)}
+  .remind .advice{background:#fff;color:#5C4A3E;border-top:1px solid #F2E6DA}
+  .remind .advice b{color:var(--clay)}
+  .remind .lbl{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:7px}
+  .remind .praise .lbl{color:var(--clay)} .remind .advice .lbl{color:var(--amber)}
+  .dot{width:6px;height:6px;border-radius:50%}
+  .praise .dot{background:var(--clay)} .advice .dot{background:var(--amber)}
+
+  /* 底部:唯一一条语音(干净麦克风,无红圈) */
+  .dock{padding:14px 16px 20px;background:linear-gradient(0deg,var(--bg) 72%,rgba(251,245,240,0));border-top:1px solid #F0E5DB}
+  .voice{display:flex;align-items:center;justify-content:center;gap:9px;padding:16px;border-radius:18px;
+    background:#fff;border:1px solid #EAD9CB;box-shadow:0 10px 24px -15px rgba(181,101,74,.45);
+    color:var(--clay);font-weight:600;font-size:14.5px}
+  .voice svg{flex:none}
+  .vhint{text-align:center;font-size:11px;color:var(--muted);margin-top:9px}
+</style>
+
+<div class="stage">
+  <div class="scroll">
+    <div class="top"><span class="back">←</span><span class="title">复盘</span></div>
+    <div class="sub">晚上,把今天收一收。</div>
+
+    <div class="sec"><span class="n">1</span>审核今天</div>
+    <div class="row" onclick="cycle(this)"><div class="col"><div class="nm">回邮件</div><div class="tm">16:00</div></div><span class="pill done">完成</span></div>
+    <div class="row" onclick="cycle(this)"><div class="col"><div class="nm">深度工作块</div><div class="tm">14:00 ★</div></div><span class="pill skip">跳过</span></div>
+    <div class="row" onclick="cycle(this)"><div class="col"><div class="nm">健身</div><div class="tm">18:00</div></div><span class="pill done">完成</span></div>
+    <div class="hint">点一行循环:未做 → 完成 → 跳过(或用下面那条语音一句话改)</div>
+
+    <div class="sec"><span class="n">2</span>今天的提醒</div>
+    <div class="remind">
+      <div class="part praise">
+        <div class="lbl"><span class="dot"></span>今天做得不错</div>
+        三件里做成了两件,<b>健身没被挤掉</b>——一天到晚事多,能守住这件,挺好的。
+      </div>
+      <div class="part advice">
+        <div class="lbl"><span class="dot"></span>给明天的小提醒</div>
+        深度工作这两天都被推掉了。明天要不要<b>一早先留一块给它</b>,趁脑子最清楚的时候?
+      </div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="voice">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5654A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21.5"/>
+      </svg>
+      按住说一句,改今天
+    </div>
+    <div class="vhint">比如「深度活儿其实做了」「健身改成了跑步」</div>
+  </div>
+</div>
+
+<div class="legend"></div>
+
+<script>
+  const states=[['todo','未做'],['done','完成'],['skip','跳过']];
+  function cycle(row){ const p=row.querySelector('.pill');
+    let i=states.findIndex(s=>p.classList.contains(s[0])); i=(i+1)%3;
+    p.className='pill '+states[i][0]; p.textContent=states[i][1]; }
+</script>

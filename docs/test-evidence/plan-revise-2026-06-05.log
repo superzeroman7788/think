@@ -1,0 +1,23 @@
+plan-revise v1.1 acceptance — production mpxdworxojotiwjxdeds — 2026-06-05
+
+Deploy:
+- db push: 0009_task_status_dropped.sql, 0010_plan_revise_proposals.sql
+- functions: plan-revise, plan-revise-apply (verify_jwt=true)
+
+TEST 1 — propose happy path
+  instruction: "把跑步推一小时，刷邮件不做了"
+  HTTP 200
+  revision_id: f84e4e9f-ba5b-4ddb-ba09-fcd9d8af8014
+  跑步 change=moved 18:00→19:00
+  刷邮件 change=dropped
+  provider=deepseek, warnings=[]
+
+TEST 2 — apply atomic
+  HTTP 200 { ok: true, applied_count: 2, tasks: [...] }
+  刷邮件 status=dropped; 跑步 planned_start moved, was_rescheduled in DB
+
+TEST 3 — APPLY_STALE
+  propose 后把任务 mark done → apply
+  HTTP 409 { error: { code: "APPLY_STALE", retryable: true } }
+
+Field alignment: revision_id, summary, revisions[], warnings, moved/dropped/unchanged, apply ok/applied_count/tasks — matches Code PlanDtos v1.1.

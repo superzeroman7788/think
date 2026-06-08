@@ -1,0 +1,83 @@
+=== ASR warm de-risk §1 — 20260606T105209Z ===
+provider=tencent connect_mode=direct
+keepalive={"max_audio_gap_ms": 6000, "pcm_chunk_duration_ms": 40, "silent_pcm_interval_ms": 4000, "relay_ws_ping_ms": 25000}
+
+--- cold baseline (connect → immediate speech) ---
+{"mode": "cold", "connect_ms": 322.2, "first_partial_ms": 8238.4, "transcript": "你好，今天天气不错。", "ok": true}
+
+--- idle 5s (silent PCM every 4.0s) → speech ---
+{"idle_s": 5, "ok": true, "session_survived_idle": true, "connect_ms": 167.4, "first_partial_ms": 7144.8, "speech_ms": 30539.6, "transcript": "你好，今天天气不错。", "idle_partials": [], "speech_partials_count": 5, "idle_noise": false}
+
+--- idle 15s (silent PCM every 4.0s) → speech ---
+{"idle_s": 15, "ok": true, "session_survived_idle": true, "connect_ms": 519.9, "first_partial_ms": 5015.0, "speech_ms": 30502.7, "transcript": "你好，今天天气不错。", "idle_partials": [], "speech_partials_count": 5, "idle_noise": false}
+
+--- idle 30s (silent PCM every 4.0s) → speech ---
+{"idle_s": 30, "ok": true, "session_survived_idle": true, "connect_ms": 267.1, "first_partial_ms": 4455.0, "speech_ms": 30124.3, "transcript": "你好，今天天气不错。", "idle_partials": [], "speech_partials_count": 6, "idle_noise": false}
+
+--- idle 60s (silent PCM every 4.0s) → speech ---
+{"idle_s": 60, "ok": true, "session_survived_idle": true, "connect_ms": 164.7, "first_partial_ms": 4457.5, "speech_ms": 30142.6, "transcript": "你好，今天天气不错。", "idle_partials": [], "speech_partials_count": 6, "idle_noise": false}
+
+=== SUMMARY ===
+{
+  "ts": "20260606T105209Z",
+  "route_recommendation": "A",
+  "max_safe_idle_s": 60,
+  "cold_baseline": {
+    "mode": "cold",
+    "connect_ms": 322.2,
+    "first_partial_ms": 8238.4,
+    "transcript": "你好，今天天气不错。",
+    "ok": true
+  },
+  "idle_cases": [
+    {
+      "idle_s": 5,
+      "ok": true,
+      "session_survived_idle": true,
+      "connect_ms": 167.4,
+      "first_partial_ms": 7144.8,
+      "speech_ms": 30539.6,
+      "transcript": "你好，今天天气不错。",
+      "idle_partials": [],
+      "speech_partials_count": 5,
+      "idle_noise": false
+    },
+    {
+      "idle_s": 15,
+      "ok": true,
+      "session_survived_idle": true,
+      "connect_ms": 519.9,
+      "first_partial_ms": 5015.0,
+      "speech_ms": 30502.7,
+      "transcript": "你好，今天天气不错。",
+      "idle_partials": [],
+      "speech_partials_count": 5,
+      "idle_noise": false
+    },
+    {
+      "idle_s": 30,
+      "ok": true,
+      "session_survived_idle": true,
+      "connect_ms": 267.1,
+      "first_partial_ms": 4455.0,
+      "speech_ms": 30124.3,
+      "transcript": "你好，今天天气不错。",
+      "idle_partials": [],
+      "speech_partials_count": 6,
+      "idle_noise": false
+    },
+    {
+      "idle_s": 60,
+      "ok": true,
+      "session_survived_idle": true,
+      "connect_ms": 164.7,
+      "first_partial_ms": 4457.5,
+      "speech_ms": 30142.6,
+      "transcript": "你好，今天天气不错。",
+      "idle_partials": [],
+      "speech_partials_count": 6,
+      "idle_noise": false
+    }
+  ],
+  "conclusion_zh": "路线 A（整条 WS 预热）: 安全 idle 上限约 60s"
+}

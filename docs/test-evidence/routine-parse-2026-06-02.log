@@ -1,0 +1,32 @@
+routine-parse acceptance — 2026-06-02 (production mpxdworxojotiwjxdeds)
+
+Deploy: supabase functions deploy routine-parse (verify_jwt=true via config.toml)
+
+TEST 1 — missing Authorization
+  POST https://mpxdworxojotiwjxdeds.supabase.co/functions/v1/routine-parse
+  Headers: apikey only
+  HTTP 401
+  Body: {"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}
+
+TEST 2 — 工作日晚上九点学英语
+  Request: {"text":"工作日晚上九点学英语","timezone":"Asia/Shanghai"}
+  HTTP 200
+  Response:
+  {
+    "routines": [{
+      "title": "学英语",
+      "default_time": "21:00",
+      "repeat_days": [1, 2, 3, 4, 5],
+      "note": null
+    }]
+  }
+
+TEST 3 — 早上八点健身，晚上十点吃药
+  HTTP 200
+  routines.length = 2
+  [0] title=健身 default_time=08:00
+  [1] title=吃药 default_time=22:00
+
+Response contains no API keys / secrets (verified manually).
+
+Parser unit tests (deno eval): same expectations for all three strings.

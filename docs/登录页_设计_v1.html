@@ -1,0 +1,95 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF5F0; --terra:#B5654A; --clay:#9E5238; --amber:#E29A52;
+    --ink:#3B322D; --muted:#A7998F;
+    --cn:"Noto Sans SC",system-ui,sans-serif; --mono:"JetBrains Mono",monospace;
+    --disp:"Bricolage Grotesque",var(--cn);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--cn);color:var(--ink);min-height:100vh;
+    background:radial-gradient(130% 90% at 50% -20%,#FFFCF9,#EFE2D6 60%,#E6D5C7);
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:30px 16px 56px;-webkit-font-smoothing:antialiased;user-select:none}
+  .stage{position:relative;width:330px;height:680px;border-radius:42px;overflow:hidden;
+    background:radial-gradient(120% 70% at 50% 8%,#FFF8F1,var(--bg) 55%);
+    box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 34px 70px -22px rgba(120,72,48,.45),0 10px 26px -12px rgba(120,72,48,.3);
+    border:1px solid rgba(181,101,74,.10);display:flex;flex-direction:column;padding:0 26px}
+
+  .status{display:flex;justify-content:space-between;align-items:center;padding:16px 2px 0;font:600 13px/1 var(--mono);color:var(--ink)}
+  .status .r{display:flex;gap:6px;opacity:.6;font-size:11px}
+
+  /* 品牌区 */
+  .brand{position:relative;text-align:center;margin-top:66px}
+  .glow{position:absolute;left:50%;top:-18px;transform:translateX(-50%);width:200px;height:160px;pointer-events:none;
+    background:radial-gradient(circle at 50% 40%,rgba(226,154,82,.34),rgba(181,101,74,.12) 45%,transparent 70%);filter:blur(8px)}
+  .star{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:18px;color:#F6DCAE;text-shadow:0 0 14px rgba(246,220,174,.9)}
+  .word{position:relative;font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:-.5px;color:var(--clay)}
+  .sub{position:relative;margin-top:6px;font-size:14px;color:var(--terra);font-weight:500}
+  .tag{position:relative;margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6}
+
+  /* 表单 */
+  .form{margin-top:54px;display:flex;flex-direction:column;gap:12px}
+  .field{display:flex;align-items:center;background:#fff;border:1px solid #EFE2D8;border-radius:14px;padding:0 14px;height:52px;
+    box-shadow:0 6px 16px -14px rgba(120,72,48,.4)}
+  .field:focus-within{border-color:#E0C4AE}
+  .cc{font-size:14.5px;color:var(--ink);font-weight:500;padding-right:12px;margin-right:12px;border-right:1px solid #EEE0D4;white-space:nowrap}
+  .field input{flex:1;border:none;outline:none;background:transparent;font-family:var(--cn);font-size:14.5px;color:var(--ink)}
+  .field input::placeholder{color:#C3B6AC}
+  .code-btn{font-size:13px;font-weight:600;color:var(--terra);white-space:nowrap;cursor:pointer;padding-left:12px}
+  .code-btn.off{color:var(--muted);cursor:default}
+
+  .login{margin-top:8px;height:52px;border:none;border-radius:14px;background:var(--terra);color:#fff;
+    font-family:var(--cn);font-size:15.5px;font-weight:600;cursor:pointer;box-shadow:0 12px 26px -10px rgba(181,101,74,.6);transition:.2s}
+  .login:disabled{background:#DEC9BC;box-shadow:none;cursor:default}
+
+  .agree{display:flex;align-items:flex-start;gap:9px;margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.5}
+  .box{width:16px;height:16px;border-radius:5px;border:1.5px solid #D8C4B5;flex:none;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .box.on{background:var(--terra);border-color:var(--terra);color:#fff;font-size:11px}
+  .agree a{color:var(--clay);text-decoration:none}
+  .hint{text-align:center;font-size:11px;color:#C3B6AC;margin-top:10px}
+
+  /* 次要登录 */
+  .or{display:flex;align-items:center;gap:12px;margin:26px 0 16px;color:#CBBDB2;font-size:11px}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:#EDE0D5}
+  .wx{display:flex;align-items:center;justify-content:center;gap:8px;height:48px;border:1px solid #EAD9CB;border-radius:14px;
+    background:#fff;color:var(--terra);font-size:14px;font-weight:500;cursor:pointer}
+  .wx .ic{width:20px;height:20px;border-radius:5px;background:#4DB04F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+</style>
+
+<div class="stage">
+  <div class="status"><span>8:02</span><span class="r">📶 🔋</span></div>
+
+  <div class="brand">
+    <div class="glow"></div><div class="star">✦</div>
+    <div class="word">think &amp; act</div>
+    <div class="sub">你的一日搭子</div>
+    <div class="tag">陪你把今天,过成你想要的样子。</div>
+  </div>
+
+  <div class="form">
+    <div class="field"><span class="cc">+86 ▾</span><input type="tel" placeholder="手机号" maxlength="11"></div>
+    <div class="field"><input type="tel" placeholder="验证码" maxlength="6"><span class="code-btn" id="codeBtn">获取验证码</span></div>
+    <button class="login" id="loginBtn" disabled>进入</button>
+
+    <div class="agree">
+      <span class="box" id="box"></span>
+      <span>我已阅读并同意 <a href="#">《用户协议》</a> 和 <a href="#">《隐私政策》</a></span>
+    </div>
+    <div class="hint">未注册的手机号将自动创建账号</div>
+
+    <div class="or">或</div>
+    <div class="wx"><span class="ic">✚</span>微信登录</div>
+  </div>
+</div>
+
+<script>
+  const box=document.getElementById('box'), loginBtn=document.getElementById('loginBtn'), codeBtn=document.getElementById('codeBtn');
+  let agreed=false;
+  box.onclick=()=>{ agreed=!agreed; box.classList.toggle('on',agreed); box.textContent=agreed?'✓':''; loginBtn.disabled=!agreed; };
+  codeBtn.onclick=()=>{ if(codeBtn.classList.contains('off'))return; let n=60; codeBtn.classList.add('off');
+    codeBtn.textContent=n+'s 后重发'; const t=setInterval(()=>{ n--; codeBtn.textContent=n+'s 后重发'; if(n<=0){clearInterval(t);codeBtn.classList.remove('off');codeBtn.textContent='获取验证码';} },1000); };
+</script>
