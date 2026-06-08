@@ -1,0 +1,42 @@
+name: iosApp
+options:
+  bundleIdPrefix: com.thinkandact
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    # DEVELOPMENT_TEAM 留空：在 Xcode 的 Signing & Capabilities 里选你的 Apple ID 即可（免费个人账号真机 7 天）。
+    DEVELOPMENT_TEAM: ""
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.thinkandact.iosApp
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: iosApp/Info.plist
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
+        # 链接 KMP 静态框架 shared.framework（由下方 preBuild 脚本现编现签）。
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - -framework
+          - shared
+        # 静态框架带 Kotlin/Native 运行时，需链接这些系统库。
+        SWIFT_OBJC_INTEROP_MODE: objcxx
+    preBuildScripts:
+      - name: "Compile & embed shared.framework (Kotlin/Native)"
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
