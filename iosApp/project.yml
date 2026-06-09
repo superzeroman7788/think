@@ -7,6 +7,9 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    # 必须关：KMP preBuild 脚本要跑 ./gradlew 编/签 shared.framework，
+    # 开了脚本沙盒会把 gradle 挡在外面、构建失败。Xcode「推荐设置」会想开它，别理。
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
@@ -23,6 +26,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.thinkandact.iosApp
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
         # 链接 KMP 静态框架 shared.framework（由下方 preBuild 脚本现编现签）。
         FRAMEWORK_SEARCH_PATHS:

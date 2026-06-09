@@ -3,6 +3,7 @@ package com.thinkandact.ui.login
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,22 +12,30 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -45,10 +54,24 @@ fun LoginScreen(
     viewModel: LoginViewModel = koinViewModel(),
 ) {
     val s by viewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
-    Column(
+    // 验证码够 6 位 → 自动收起键盘,露出「进入」+ 协议勾选(iOS 数字键盘没有回退键)。
+    LaunchedEffect(s.code) { if (s.code.length >= 6) focusManager.clearFocus() }
+
+    // 点空白处收起键盘(数字键盘无 return,否则键盘挡住下半屏没法操作)。
+    Box(
         modifier = Modifier.fillMaxSize().background(TnaColors.Background)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusManager.clearFocus() },
+    ) {
+    Column(
+        modifier = Modifier.fillMaxSize()
             .statusBarsPadding().navigationBarsPadding()
+            .imePadding() // 键盘弹出时整体上移,不再遮挡按钮
+            .verticalScroll(rememberScrollState()) // 兜底:小屏也能滚到底部
             .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -68,7 +91,7 @@ fun LoginScreen(
         FieldRow {
             Text("+86", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Medium))
             Box(Modifier.width(1.dp).height(20.dp).background(TnaColors.Line).padding(horizontal = 0.dp))
-            PlainInput(value = s.phone, onChange = viewModel::onPhone, placeholder = "手机号", modifier = Modifier.weight(1f))
+            PlainInput(value = s.phone, onChange = viewModel::onPhone, placeholder = "手机号", modifier = Modifier.weight(1f), imeAction = ImeAction.Next)
         }
         Spacer(Modifier.height(12.dp))
         // 验证码 + 获取
@@ -146,6 +169,8 @@ fun LoginScreen(
             Spacer(Modifier.height(8.dp))
             Text(it, modifier = Modifier.clickable(onClick = viewModel::dismissWechatNote).fillMaxWidth(), style = TnaTypography.Mono.copy(color = TnaColors.Muted), textAlign = TextAlign.Center)
         }
+        Spacer(Modifier.height(28.dp)) // 底部留白,滚动到底时最后一项也不顶边
+    }
     }
 }
 
@@ -163,13 +188,25 @@ private fun FieldRow(content: @Composable androidx.compose.foundation.layout.Row
 }
 
 @Composable
-private fun PlainInput(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+private fun PlainInput(
+    value: String,
+    onChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Done,
+) {
+    val focusManager = LocalFocusManager.current
     BasicTextField(
         value = value,
         onValueChange = onChange,
         textStyle = TnaTypography.Body.copy(color = TnaColors.Ink),
         cursorBrush = SolidColor(TnaColors.Accent),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
+            onDone = { focusManager.clearFocus() },
+        ),
         modifier = modifier,
         decorationBox = { inner ->
             Box(contentAlignment = Alignment.CenterStart) {
