@@ -3,6 +3,7 @@ package com.thinkandact
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +40,7 @@ sealed class Screen {
     data object Review : Screen()
     data object History : Screen()
     data object FullPlan : Screen()
+    data object Inbox : Screen()
 }
 
 @Composable
@@ -61,7 +63,7 @@ fun App() {
         // BUG-01：系统返回键/右滑 → 逐屏返回,而不是退 App。Morning 时不拦(默认退出)。
         AppBackHandler(enabled = currentScreen != Screen.Morning) {
             currentScreen = when (currentScreen) {
-                Screen.Review, Screen.FullPlan -> Screen.Execution
+                Screen.Review, Screen.FullPlan, Screen.Inbox -> Screen.Execution
                 else -> Screen.Morning
             }
         }
@@ -70,6 +72,14 @@ fun App() {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
             if (today != lastDate) { lastDate = today; currentScreen = Screen.Morning }
+        }
+        // 第四批 N-03:点 ★ 提醒通知 → MainActivity 置位 → 直达执行屏(消费后复位)。
+        val openExecution by com.thinkandact.ui.NavSignals.openExecution.collectAsState()
+        LaunchedEffect(openExecution) {
+            if (openExecution) {
+                currentScreen = Screen.Execution
+                com.thinkandact.ui.NavSignals.openExecution.value = false
+            }
         }
         val reminders: RemindersViewModel = koinViewModel()
         val activeReminder by reminders.active.collectAsState()
@@ -86,10 +96,12 @@ fun App() {
                     onBack = { currentScreen = Screen.Morning },
                     onOpenReview = { currentScreen = Screen.Review },
                     onOpenFullPlan = { currentScreen = Screen.FullPlan },
+                    onOpenInbox = { currentScreen = Screen.Inbox },
                 )
                 Screen.Review -> ReviewScreen(onBack = { currentScreen = Screen.Execution })
                 Screen.History -> HistoryScreen(onBack = { currentScreen = Screen.Morning })
                 Screen.FullPlan -> FullPlanScreen(onBack = { currentScreen = Screen.Execution })
+                Screen.Inbox -> com.thinkandact.ui.inbox.InboxScreen(onBack = { currentScreen = Screen.Execution })
             }
 
             // 块三：普通任务到点的 App 内横幅,浮在当前屏顶部。

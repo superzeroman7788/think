@@ -148,6 +148,7 @@ class RoutineViewModel(
     }
 
     private fun voiceFailureHint(reason: String): String = when {
+        reason.contains("麦克风") -> reason // N-10:设备级失败显真实原因,不套「没接上」
         reason.contains("QUOTA", ignoreCase = true) || reason.contains("429") ->
             "今天的语音次数用完了,先手动加吧。"
         reason.contains("Unable to resolve host", ignoreCase = true) || reason.contains("timeout", ignoreCase = true) ->

@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import kotlin.math.ceil
 
 /**
@@ -32,7 +34,16 @@ class ExecutionViewModel(
     private val planRepository: PlanRepository,
     private val voiceInputService: VoiceInputService,
     private val reminderScheduler: com.thinkandact.reminders.ReminderScheduler,
+    private val inboxRepository: com.thinkandact.data.InboxRepository,
 ) : ViewModel() {
+
+    /** 收件箱角标(顶栏):pending 且 due ≤ 今天。每次 load 刷新。 */
+    fun refreshInboxBadge() {
+        viewModelScope.launch {
+            val c = inboxRepository.badgeCount()
+            _uiState.update { it.copy(inboxBadge = c) }
+        }
+    }
 
     /** ★ 任务系统提醒:每次任务集变化都整组重排(仅 ★+planned+未来)。 */
     private fun syncReminders() {
@@ -80,6 +91,7 @@ class ExecutionViewModel(
                     ensureCurrentStarted()
                     recomputeTide()
                     syncReminders() // ★ 任务到点系统提醒
+                    refreshInboxBadge() // 收件箱角标
                     // §2 接缓存：进执行屏即预取 ASR 会话（不计配额），让「想调整今天」首次按麦 preflight≈0。
                     viewModelScope.launch { voiceInputService.warmSessionCache() }
                 }
@@ -139,7 +151,14 @@ class ExecutionViewModel(
     private fun startTideTicker() {
         tideJob?.cancel()
         tideJob = viewModelScope.launch {
+            // 第四批 N-08:亮屏挂机跨午夜也要换天(BUG-05 只盖了 ON_RESUME)。
+            var tickerDay = Clock.System.todayIn(TimeZone.currentSystemDefault())
             while (true) {
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                if (today != tickerDay) {
+                    tickerDay = today
+                    load() // 重拉新一天的任务(load 内部按当天日期取数)
+                }
                 if (!uiState.value.isCompleting) recomputeTide()
                 delay(30_000)
             }
@@ -430,6 +449,7 @@ class ExecutionViewModel(
 
     /** ASR 连接/录音失败的提示（区分配额/网络），不再一律「没接上」。 */
     private fun asrFailHint(reason: String): String = when {
+        reason.contains("麦克风") -> reason // N-10:设备级失败显真实原因,不套「没接上」
         reason.contains("QUOTA", ignoreCase = true) || reason.contains("429") || reason.contains("次数用完") ->
             "今天的语音次数用完了,先手动点完成/跳过吧。"
         reason.contains("Unable to resolve host", ignoreCase = true) || reason.contains("timeout", ignoreCase = true) ->
@@ -486,6 +506,7 @@ data class ExecutionUiState(
     val remText: String = "",
     val remNear: Boolean = false,
     val isCompleting: Boolean = false,
+    val inboxBadge: Int = 0,
 ) {
     val currentTask: TaskRowDto? get() = tasks.firstOrNull { it.id == currentTaskId }
     /** 进度 = 已处理(完成 + 跳过 + 不做了)/ 总数。 */

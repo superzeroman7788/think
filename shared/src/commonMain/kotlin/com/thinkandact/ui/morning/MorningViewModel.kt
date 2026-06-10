@@ -26,6 +26,8 @@ import kotlin.math.abs
 class MorningViewModel(
     private val planRepository: PlanRepository,
     private val voiceInputService: VoiceInputService,
+    private val inboxRepository: com.thinkandact.data.InboxRepository,
+    private val reminderScheduler: com.thinkandact.reminders.ReminderScheduler,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MorningUiState())
@@ -45,7 +47,41 @@ class MorningViewModel(
 
     init {
         prepareSession()
+        loadRecall()
     }
+
+    // ── 早上浮现（§三）：到日子了的收件箱条目召回 ─────────────────────────
+    /** pending 且 due ≤ 今天的条目，morning 顶部召回卡。 */
+    fun loadRecall() {
+        viewModelScope.launch {
+            val today = kotlinx.datetime.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+            runCatching { inboxRepository.list() }
+                .onSuccess { items ->
+                    val recall = items.filter { it.status == "pending" && it.dueDate?.let { d -> runCatching { kotlinx.datetime.LocalDate.parse(d) <= today }.getOrDefault(false) } == true }
+                    _uiState.update { it.copy(recallItems = recall) }
+                }
+        }
+    }
+
+    /** 召回卡「加进今天」→ 后端生成真任务；成功后从召回里移除。 */
+    fun addRecallToday(id: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(recallPendingId = id) }
+            runCatching { inboxRepository.addToday(id) }
+                .onSuccess { _uiState.update { st -> st.copy(recallPendingId = null, recallItems = st.recallItems.filterNot { it.id == id }) } }
+                .onFailure { t -> _uiState.update { it.copy(recallPendingId = null, errorMessage = t.message ?: "加进今天没成功。") } }
+        }
+    }
+
+    /** 召回卡「先不」→ dismiss，安静收起，永不自动再提。 */
+    fun dismissRecall(id: String) {
+        viewModelScope.launch {
+            _uiState.update { st -> st.copy(recallItems = st.recallItems.filterNot { it.id == id }) } // 乐观移除
+            runCatching { inboxRepository.dismiss(id) }
+        }
+    }
+
+    fun toggleRecallExpanded() { _uiState.update { it.copy(recallExpanded = !it.recallExpanded) } }
 
     fun onInputChange(value: String) {
         _uiState.update { it.copy(rawInput = value, errorMessage = null) }
@@ -233,14 +269,36 @@ class MorningViewModel(
     private suspend fun doConfirm() {
         _uiState.update { it.copy(isSavingPlan = true, saveErrorMessage = null) }
         runCatching { planRepository.confirmTodayTasks(uiState.value.editableTasks.map { it.task }) }
-            .onSuccess {
+            .onSuccess { insertedRows ->
                 _uiState.update { it.copy(isSavingPlan = false, isConfirmed = true, saveErrorMessage = null) }
+                // N-02:确认成功就地排 ★ 系统提醒——「早上确认→锁屏出门」不进执行屏也要响。
+                runCatching {
+                    val now = Clock.System.now().toEpochMilliseconds()
+                    reminderScheduler.sync(com.thinkandact.reminders.ReminderPlanner.fromTasks(insertedRows, now))
+                }
             }
             .onFailure { throwable ->
                 println("confirmPlan failed: ${throwable.message}")
                 _uiState.update { it.copy(isSavingPlan = false, saveErrorMessage = throwable.friendlyMessage(action = "save")) }
             }
     }
+
+    /** N-04:确认时通知权限被拒 → 轻引导一次(不阻断确认本身)。 */
+    fun onNotifPermissionDenied() {
+        _uiState.update { it.copy(notifHint = "想按时叫你做 ★ 的事,需要通知权限——可以去设置里打开。") }
+    }
+
+    fun dismissNotifHint() {
+        _uiState.update { it.copy(notifHint = null) }
+    }
+
+    fun openNotifSettings() {
+        reminderScheduler.openBackgroundSettings()
+        dismissNotifHint()
+    }
+
+    /** N-04:本次确认的计划里是否有 ★ 任务(有才值得先要通知权限)。 */
+    fun hasImportantTasks(): Boolean = uiState.value.editableTasks.any { it.task.important }
 
     /** 确认并跳「今天」后调用:清空本屏，下次进早上屏是干净的入口。 */
     fun clearAfterConfirm() {
@@ -403,6 +461,12 @@ data class MorningUiState(
     val addTaskMessage: String? = null,
     /** BUG-02：今天已有执行记录时,重确认前的强提醒(避免误覆盖)。 */
     val showOverwriteWarning: Boolean = false,
+    /** 第四批 N-04:通知权限被拒后的轻引导(一次,可去设置)。 */
+    val notifHint: String? = null,
+    /** 早上浮现（§三）：到日子了的收件箱召回条目。 */
+    val recallItems: List<com.thinkandact.data.remote.InboxItemDto> = emptyList(),
+    val recallExpanded: Boolean = false,
+    val recallPendingId: String? = null,
 )
 
 data class EditablePlanTask(val id: String, val task: PlanTaskDto)

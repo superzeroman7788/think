@@ -270,6 +270,7 @@ class ReviewViewModel(
     fun dismissVoiceHint() { _uiState.update { it.copy(voiceHint = null) } }
 
     private fun asrFailHint(reason: String): String = when {
+        reason.contains("麦克风") -> reason // N-10:设备级失败显真实原因,不套「没接上」
         reason.contains("QUOTA", true) || reason.contains("429") -> "今天的语音次数用完了,先点一下改吧。"
         else -> "语音没接上,先用点选改也行。"
     }

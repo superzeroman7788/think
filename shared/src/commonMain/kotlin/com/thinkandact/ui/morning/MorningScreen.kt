@@ -70,8 +70,11 @@ import com.thinkandact.ui.common.VoiceMicButton
 import com.thinkandact.ui.theme.TnaColors
 import com.thinkandact.ui.theme.TnaShapes
 import com.thinkandact.ui.theme.TnaTypography
+import androidx.compose.runtime.rememberCoroutineScope
 import com.thinkandact.voice.rememberMicPermissionController
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
@@ -92,6 +95,19 @@ fun MorningScreen(
         if (state.isConfirmed) {
             onOpenExecution()
             viewModel.clearAfterConfirm()
+        }
+    }
+
+    // 第四批 N-04:确认计划(要排 ★ 提醒)前请求通知权限,不再只绑在执行屏首进。
+    // 被拒不阻断确认,只轻引导一次(见 notifHint)。
+    val notifPerm = com.thinkandact.reminders.rememberNotificationPermission()
+    val confirmScope = rememberCoroutineScope()
+    val onConfirmPlan: () -> Unit = {
+        confirmScope.launch {
+            if (viewModel.hasImportantTasks() && !notifPerm.request()) {
+                viewModel.onNotifPermissionDenied()
+            }
+            viewModel.confirmPlan()
         }
     }
 
@@ -132,6 +148,19 @@ fun MorningScreen(
             Spacer(modifier = Modifier.height(10.dp))
             MorningHeader(onOpenRoutines = onOpenRoutines, onOpenExecution = onOpenExecution, onOpenHistory = onOpenHistory)
 
+            // 早上浮现（§三）：到日子了的收件箱召回卡。
+            if (state.recallItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                InboxRecallCards(
+                    items = state.recallItems,
+                    expanded = state.recallExpanded,
+                    pendingId = state.recallPendingId,
+                    onAdd = viewModel::addRecallToday,
+                    onDismiss = viewModel::dismissRecall,
+                    onToggleExpand = viewModel::toggleRecallExpanded,
+                )
+            }
+
             when {
                 // 生成 / 重新生成中：优先显示加载提示。重排时（已有 proposal）给出
                 // 「正在帮你改今天」的话术，让用户知道这次语音调整收到了、正在处理。
@@ -147,7 +176,7 @@ fun MorningScreen(
                     onToggleImportant = viewModel::toggleImportant,
                     onEditTime = { task -> editingTimeTask = task },
                     onAddTask = { showAddTask = true },
-                    onRetrySave = viewModel::confirmPlan,
+                    onRetrySave = onConfirmPlan,
                     onAcceptSuggestion = viewModel::acceptSuggestion,
                 )
                 else -> EntryContent(
@@ -185,7 +214,7 @@ fun MorningScreen(
                 voiceSpokenText = state.voiceSpokenText,
                 onMicPressStart = onMicPressStart,
                 onAdjustPressEnd = onAdjustPressEnd,
-                onLooksGood = viewModel::confirmPlan,
+                onLooksGood = onConfirmPlan,
                 onPressDown = onFbDown,
                 onPressUp = onFbUp,
                 onCancel = viewModel::cancelVoiceInput,
@@ -232,6 +261,20 @@ fun MorningScreen(
                 confirmText = "继续确认",
                 onDismiss = viewModel::dismissOverwriteWarning,
                 onConfirm = viewModel::confirmOverwrite,
+            )
+        }
+    }
+
+    // 第四批 N-04:通知权限被拒 → 轻引导一次(可去设置打开,不纠缠)。
+    state.notifHint?.let { hint ->
+        TnaDialog(onDismiss = viewModel::dismissNotifHint) {
+            Text("提醒可能响不了", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(hint, style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft))
+            DialogActions(
+                confirmText = "去设置",
+                onDismiss = viewModel::dismissNotifHint,
+                onConfirm = viewModel::openNotifSettings,
             )
         }
     }
@@ -289,6 +332,60 @@ private fun MorningHeader(onOpenRoutines: () -> Unit, onOpenExecution: () -> Uni
         }
     }
     Text(text = "morning.", modifier = Modifier.padding(top = 14.dp), style = TnaTypography.Display)
+}
+
+/** 早上浮现（§三）：到日子了的收件箱召回卡。最多 3 条，余下折叠。 */
+@Composable
+private fun InboxRecallCards(
+    items: List<com.thinkandact.data.remote.InboxItemDto>,
+    expanded: Boolean,
+    pendingId: String?,
+    onAdd: (String) -> Unit,
+    onDismiss: (String) -> Unit,
+    onToggleExpand: () -> Unit,
+) {
+    val shown = if (expanded) items else items.take(3)
+    val rest = items.size - shown.size
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        shown.forEach { item ->
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .background(TnaColors.AccentSoft.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFE6C5AC), RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+            ) {
+                Text(recallPrefix(item.createdAt) + "记过", style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+                Spacer(Modifier.height(4.dp))
+                Text(item.text, style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.SemiBold))
+                Spacer(Modifier.height(2.dp))
+                Text("今天" + com.thinkandact.ui.inbox.partSuffix(item.duePart), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (pendingId == item.id) {
+                        CircularProgressIndicator(Modifier.size(18.dp), color = TnaColors.AccentDeep, strokeWidth = 2.dp)
+                    } else {
+                        Box(
+                            modifier = Modifier.background(TnaColors.Accent, RoundedCornerShape(999.dp)).clickable { onAdd(item.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text("加进今天", style = TnaTypography.Body.copy(color = Color.White, fontWeight = FontWeight.SemiBold)) }
+                        Box(
+                            modifier = Modifier.border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp)).clickable { onDismiss(item.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) { Text("先不", style = TnaTypography.Body.copy(color = TnaColors.Muted)) }
+                    }
+                }
+            }
+        }
+        if (rest > 0 && !expanded) {
+            Text("还有 $rest 条在收件箱", modifier = Modifier.clickable(onClick = onToggleExpand).padding(vertical = 4.dp), style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+        }
+    }
+}
+
+/** created_at → 「你周X」前缀（拿不到就「你之前」）。 */
+private fun recallPrefix(createdAt: String?): String {
+    val d = createdAt?.let { runCatching { kotlinx.datetime.Instant.parse(it).toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date }.getOrNull() }
+        ?: return "你之前"
+    val wd = when (d.dayOfWeek.isoDayNumber) { 1 -> "周一"; 2 -> "周二"; 3 -> "周三"; 4 -> "周四"; 5 -> "周五"; 6 -> "周六"; else -> "周日" }
+    return "你$wd"
 }
 
 @Composable

@@ -2,6 +2,7 @@ package com.thinkandact.core.di
 
 import com.thinkandact.data.AuthRepository
 import com.thinkandact.data.HistoryRepository
+import com.thinkandact.data.InboxRepository
 import com.thinkandact.data.PlanRepository
 import com.thinkandact.data.ReviewRepository
 import com.thinkandact.data.RoutineRepository
@@ -9,6 +10,7 @@ import com.thinkandact.network.createHttpClient
 import com.thinkandact.ui.execution.ExecutionViewModel
 import com.thinkandact.ui.fullplan.FullPlanViewModel
 import com.thinkandact.ui.history.HistoryViewModel
+import com.thinkandact.ui.inbox.InboxViewModel
 import com.thinkandact.ui.login.LoginViewModel
 import com.thinkandact.ui.morning.MorningViewModel
 import com.thinkandact.ui.reminders.RemindersViewModel
@@ -40,6 +42,7 @@ val sharedModule = module {
     single { RoutineRepository(get(), get()) }
     single { ReviewRepository(get(), get()) }
     single { HistoryRepository(get(), get()) }
+    single { InboxRepository(get(), get()) }
     single { AuthRepository(get(), get(), get()) }
 
     // 语音输入（FE-ASR-1）
@@ -52,10 +55,11 @@ val sharedModule = module {
     single { VoiceInputService(get(), get(), get(), get()) }
 
     viewModel { RoutineViewModel(get(), get()) }
-    viewModel { MorningViewModel(get(), get()) }
-    viewModel { ExecutionViewModel(get(), get(), get()) }
+    viewModel { MorningViewModel(get(), get(), get(), get()) }
+    viewModel { ExecutionViewModel(get(), get(), get(), get()) }
     viewModel { ReviewViewModel(get(), get()) }
     viewModel { HistoryViewModel(get()) }
+    viewModel { InboxViewModel(get(), get()) }
     viewModel { FullPlanViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
     viewModel { RemindersViewModel(get()) }

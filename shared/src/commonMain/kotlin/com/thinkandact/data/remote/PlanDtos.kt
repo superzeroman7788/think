@@ -90,6 +90,10 @@ data class TaskSoftDeleteDto(
     @SerialName("deleted_at") val deletedAt: String
 )
 
+/** N-05 确认去重:只取标题的轻量行。 */
+@Serializable
+data class TitleOnlyDto(val title: String)
+
 /**
  * 执行屏读取的当天任务（含 id 与执行态，块一）。
  * 复盘腿额外用到 [wasRescheduled] / [source] / [rescheduleCount]（可选，旧 select 不取时为默认值）。

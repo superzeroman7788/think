@@ -58,15 +58,24 @@ class VoiceInputService(
 
         val audioBuffer = Channel<ByteArray>(Channel.UNLIMITED)
         val captureJob = launch {
+            var gotAudio = false
             try {
                 audioRecorder.audioStream().collect { chunk ->
+                    gotAudio = true
                     vad.onChunk(chunk)
                     // 每帧平滑（§7：amp += (target−amp)*0.35）→ 推给波形。
                     _amp.update { cur -> cur + (vad.lastLevel - cur) * 0.35f }
                     audioBuffer.send(chunk)
                 }
-            } catch (_: Throwable) {
-                // 采音异常不直接杀流，交给下游连接/接收处理。
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // 第四批 N-10:一帧都没采到 = 设备/权限级失败(被占用/初始化失败)→ 报真实原因,
+                // 不能放任走到「没听清,再说一次?」误导排查。采到一半的异常仍交下游收尾。
+                com.thinkandact.core.debug.FeDebug.raw(com.thinkandact.core.debug.FeDebug.Layer.BACKEND, "录音采集失败(原始): ${e.message ?: e}")
+                if (!gotAudio) {
+                    trySend(AsrEvent.Failed("麦克风没启动起来(可能被其他应用占用或没权限),检查后再试。"))
+                }
             } finally {
                 audioBuffer.close()
             }

@@ -3,7 +3,8 @@ package com.thinkandact.reminders
 import com.thinkandact.data.remote.TaskRowDto
 import kotlinx.datetime.Instant
 
-/** 一条 ★ 任务的本地提醒。 */
+/** 一条 ★ 任务的本地提醒。可序列化:Android 持久化到 prefs,重启后 BootReceiver 重排(第四批 N-01)。 */
+@kotlinx.serialization.Serializable
 data class TaskReminder(
     val taskId: String,
     val title: String,

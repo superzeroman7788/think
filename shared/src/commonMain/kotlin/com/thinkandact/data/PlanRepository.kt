@@ -17,6 +17,7 @@ import com.thinkandact.data.remote.TaskActualStartUpdateDto
 import com.thinkandact.data.remote.TaskDoneUpdateDto
 import com.thinkandact.data.remote.TaskInsertDto
 import com.thinkandact.data.remote.TaskRowDto
+import com.thinkandact.data.remote.TitleOnlyDto
 import com.thinkandact.data.remote.TaskSkipUpdateDto
 import com.thinkandact.data.remote.TaskSoftDeleteDto
 import com.thinkandact.data.session.SessionStore
@@ -70,15 +71,27 @@ class PlanRepository(
         confirmTodayTasks(proposal.tasks + proposal.suggestionTasks)
     }
 
-    suspend fun confirmTodayTasks(tasks: List<PlanTaskDto>) {
+    /**
+     * @return 实际插入的任务行(含库内 id),供上层立刻排 ★ 提醒(N-02),不必再拉一遍。
+     * N-05:重确认保留 done/skipped 后,重新生成的计划可能再含已做完的事 →
+     * 落库前按**当天已执行任务的标题**去重,同名不重插(避免一条 done 一条 planned 并存)。
+     */
+    suspend fun confirmTodayTasks(tasks: List<PlanTaskDto>): List<TaskRowDto> {
         val session = ensureSession()
         val userId = session.userId?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Missing user id for task insert.")
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 
-        softDeleteTodayTasks(session, userId, today)
+        val executedTitles = fetchExecutedTitlesToday(session, userId, today)
+        val deduped = tasks.filterNot { normalizeTitle(it.title) in executedTitles }
+        tasks.filter { normalizeTitle(it.title) in executedTitles }.forEach {
+            com.thinkandact.core.debug.FeDebug.drop("confirm 去重跳过「${it.title}」", "今天已有同名 done/skipped(N-05)")
+        }
 
-        val rows = tasks.map { task ->
+        softDeleteTodayTasks(session, userId, today)
+        if (deduped.isEmpty()) return emptyList()
+
+        val rows = deduped.map { task ->
             task.toInsertDto(
                 userId = userId,
                 date = today,
@@ -95,7 +108,27 @@ class PlanRepository(
         if (!insert.status.isSuccess()) {
             throw IllegalStateException(insert.bodyAsText().ifBlank { "Task insert failed." })
         }
+        return insert.body()
     }
+
+    /** N-05:当天已执行(done/skipped)任务的归一化标题集合。查询失败放行(空集合),不阻断确认。 */
+    private suspend fun fetchExecutedTitlesToday(
+        session: SupabaseSession,
+        userId: String,
+        today: String,
+    ): Set<String> = runCatching {
+        val response = httpClient.get(
+            "${SupabaseConfig.URL}/rest/v1/tasks" +
+                "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null&status=in.(done,skipped)&select=title"
+        ) {
+            supabaseHeaders(session.accessToken)
+            accept(ContentType.Application.Json)
+        }
+        if (!response.status.isSuccess()) return@runCatching emptySet()
+        response.body<List<TitleOnlyDto>>().map { normalizeTitle(it.title) }.toSet()
+    }.getOrDefault(emptySet())
+
+    private fun normalizeTitle(title: String): String = title.trim().lowercase()
 
     /** BUG-02：今天是否已有执行记录(done/skipped)——重确认前据此强提醒,避免误覆盖白天进度。 */
     suspend fun hasExecutedTasksToday(): Boolean {

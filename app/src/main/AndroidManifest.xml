@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- 第四批 N-01:重启后重排 ★ 提醒(闹钟被系统清空) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".ThinkAndActApplication"
@@ -16,9 +18,11 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.ThinkAndAct">
+        <!-- N-03:singleTask——点提醒通知拉起已存在实例时走 onNewIntent,extra 不丢 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.ThinkAndAct">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,6 +35,15 @@
         <receiver
             android:name="com.thinkandact.reminders.ReminderReceiver"
             android:exported="false" />
+
+        <!-- 第四批 N-01:开机后重排当天剩余 ★ 提醒 -->
+        <receiver
+            android:name="com.thinkandact.reminders.ReminderBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
