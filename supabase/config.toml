@@ -405,6 +405,18 @@ verify_jwt = true
 [functions.memory-add]
 verify_jwt = true
 
+[functions.inbox-capture]
+verify_jwt = true
+
+[functions.inbox-list]
+verify_jwt = true
+
+[functions.inbox-update]
+verify_jwt = true
+
+[functions.inbox-badge]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

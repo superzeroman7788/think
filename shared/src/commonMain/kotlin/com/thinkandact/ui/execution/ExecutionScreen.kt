@@ -84,6 +84,7 @@ fun ExecutionScreen(
     onBack: () -> Unit,
     onOpenReview: () -> Unit = {},
     onOpenFullPlan: () -> Unit = {},
+    onOpenInbox: () -> Unit = {},
     viewModel: ExecutionViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -148,7 +149,7 @@ fun ExecutionScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            ExecutionHeader(progress = state.progressCount, total = state.totalCount, onBack = onBack, onOpenReview = onOpenReview, onOpenFullPlan = onOpenFullPlan)
+            ExecutionHeader(progress = state.progressCount, total = state.totalCount, onBack = onBack, onOpenReview = onOpenReview, onOpenFullPlan = onOpenFullPlan, onOpenInbox = onOpenInbox, inboxBadge = state.inboxBadge)
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
@@ -237,7 +238,7 @@ fun ExecutionScreen(
 }
 
 @Composable
-private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, onOpenReview: () -> Unit, onOpenFullPlan: () -> Unit = {}) {
+private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, onOpenReview: () -> Unit, onOpenFullPlan: () -> Unit = {}, onOpenInbox: () -> Unit = {}, inboxBadge: Int = 0) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -251,6 +252,23 @@ private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, onOpe
             Text(text = "←", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
         }
         Text(text = "今天", modifier = Modifier.padding(start = 12.dp).weight(1f), style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
+        // 收件箱入口 + 角标(§六:count=pending 且 due≤今天;0 不显示)。
+        Box(modifier = Modifier.padding(end = 8.dp)) {
+            Box(
+                modifier = Modifier
+                    .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
+                    .clickable(onClick = onOpenInbox)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(text = "▤", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep))
+            }
+            if (inboxBadge > 0) {
+                Box(
+                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp)
+                        .background(TnaColors.Accent, RoundedCornerShape(999.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
+                ) { Text(text = if (inboxBadge > 9) "9+" else "$inboxBadge", style = TnaTypography.Mono.copy(color = Color.White, fontSize = 10.sp)) }
+            }
+        }
         // 完整计划入口(列表图标):拉远看整天 + 随时改。
         Box(
             modifier = Modifier
