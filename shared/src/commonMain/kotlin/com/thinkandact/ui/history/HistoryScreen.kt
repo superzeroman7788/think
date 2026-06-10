@@ -81,6 +81,19 @@ fun HistoryScreen(
                     Text("  在翻这几天…", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
                 }
             }
+            state.errorMessage != null -> {
+                Spacer(Modifier.height(48.dp))
+                Text(
+                    state.errorMessage ?: "拉历史失败了。",
+                    style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "再试一次",
+                    modifier = Modifier.clickable { viewModel.load() },
+                    style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold),
+                )
+            }
             !state.hasAnyData -> {
                 Spacer(Modifier.height(48.dp))
                 Text("才刚开始,过几天这里就有你的节奏了。", style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft))

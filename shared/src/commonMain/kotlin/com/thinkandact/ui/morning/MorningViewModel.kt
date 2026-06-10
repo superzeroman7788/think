@@ -118,7 +118,10 @@ class MorningViewModel(
 
     /** 松手：停采 + 等 final，不立刻 cancel 识别流。 */
     fun stopVoiceInput() {
-        if (!uiState.value.isRecording || uiState.value.isVoiceFinalizing) return
+        if (!uiState.value.isRecording || uiState.value.isVoiceFinalizing) {
+            regenerateAfterVoice = false // BUG-07：提前 return 也复位,别把"重排"标志残留到下一段普通语音
+            return
+        }
         latencyTracker.onStop()
         _uiState.update {
             it.copy(isRecording = false, isVoiceConnecting = false, isVoiceFinalizing = true)
@@ -176,19 +179,22 @@ class MorningViewModel(
     fun generatePlan() {
         val input = uiState.value.rawInput.trim()
         if (input.isEmpty()) return
+        if (uiState.value.isLoading) return // BUG-06 防抖：生成中再点忽略,别双倍消耗 AI / 竞态覆盖
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { planRepository.generatePlan(input) }
                 .onSuccess { plan ->
-                    _uiState.update {
-                        it.copy(
+                    val merged = mergeManualTasks(plan.toEditableTasks(), uiState.value.editableTasks)
+                    _uiState.update { state ->
+                        state.copy(
                             isLoading = false,
                             proposal = plan,
-                            editableTasks = plan.toEditableTasks(),
+                            editableTasks = merged,
                             isConfirmed = false,
                             saveErrorMessage = null,
-                            errorMessage = null
+                            errorMessage = null,
+                            addTaskMessage = null,
                         )
                     }
                 }
@@ -202,18 +208,38 @@ class MorningViewModel(
     fun retry() = generatePlan()
 
     fun confirmPlan() {
-        if (uiState.value.proposal == null) return
+        if (uiState.value.proposal == null || uiState.value.isSavingPlan) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isSavingPlan = true, saveErrorMessage = null) }
-            runCatching { planRepository.confirmTodayTasks(uiState.value.editableTasks.map { it.task }) }
-                .onSuccess {
-                    _uiState.update { it.copy(isSavingPlan = false, isConfirmed = true, saveErrorMessage = null) }
-                }
-                .onFailure { throwable ->
-                    println("confirmPlan failed: ${throwable.message}")
-                    _uiState.update { it.copy(isSavingPlan = false, saveErrorMessage = throwable.friendlyMessage(action = "save")) }
-                }
+            // BUG-02：今天已有执行记录(已完成/已跳过)时,先强提醒,别直接覆盖。
+            val hasExecuted = runCatching { planRepository.hasExecutedTasksToday() }.getOrDefault(false)
+            if (hasExecuted) {
+                _uiState.update { it.copy(showOverwriteWarning = true) }
+            } else {
+                doConfirm()
+            }
         }
+    }
+
+    /** 强提醒里点「确定」→ 真正落库(已执行的会被保留,见 BUG-02)。 */
+    fun confirmOverwrite() {
+        _uiState.update { it.copy(showOverwriteWarning = false) }
+        viewModelScope.launch { doConfirm() }
+    }
+
+    fun dismissOverwriteWarning() {
+        _uiState.update { it.copy(showOverwriteWarning = false) }
+    }
+
+    private suspend fun doConfirm() {
+        _uiState.update { it.copy(isSavingPlan = true, saveErrorMessage = null) }
+        runCatching { planRepository.confirmTodayTasks(uiState.value.editableTasks.map { it.task }) }
+            .onSuccess {
+                _uiState.update { it.copy(isSavingPlan = false, isConfirmed = true, saveErrorMessage = null) }
+            }
+            .onFailure { throwable ->
+                println("confirmPlan failed: ${throwable.message}")
+                _uiState.update { it.copy(isSavingPlan = false, saveErrorMessage = throwable.friendlyMessage(action = "save")) }
+            }
     }
 
     /** 确认并跳「今天」后调用:清空本屏，下次进早上屏是干净的入口。 */
@@ -266,9 +292,21 @@ class MorningViewModel(
         }
     }
 
-    fun addTask(title: String, hour: Int, minute: Int) {
+    /** @return false = 未加入(已写 [MorningUiState.addTaskMessage])。 */
+    fun addTask(title: String, hour: Int, minute: Int): Boolean {
         val cleanedTitle = title.trim()
-        if (cleanedTitle.isEmpty()) return
+        if (cleanedTitle.isEmpty()) {
+            _uiState.update { it.copy(addTaskMessage = "写个名字吧。") }
+            return false
+        }
+        if (uiState.value.proposal == null) {
+            _uiState.update { it.copy(addTaskMessage = "先生成今天的计划,再加一项。") }
+            return false
+        }
+        if (uiState.value.isConfirmed) {
+            _uiState.update { it.copy(addTaskMessage = "今天已经确认过了,要加的话先回早上屏改。") }
+            return false
+        }
 
         val plannedStart = buildTodayIso(hour, minute)
         val timeOfDay = inferTimeOfDay(hour)
@@ -287,9 +325,15 @@ class MorningViewModel(
                         source = "user_text"
                     )
                 ),
-                saveErrorMessage = null
+                saveErrorMessage = null,
+                addTaskMessage = "已加上「$cleanedTitle」",
             )
         }
+        return true
+    }
+
+    fun dismissAddTaskMessage() {
+        _uiState.update { it.copy(addTaskMessage = null) }
     }
 
     private fun prepareSession() {
@@ -354,10 +398,25 @@ data class MorningUiState(
     val isVoiceFinalizing: Boolean = false,
     /** 本次按住正在说的实时文字（用于计划页录音预览气泡）。 */
     val voiceSpokenText: String = "",
-    val voiceHint: String? = null
+    val voiceHint: String? = null,
+    /** 「加一项」成功/失败反馈(N-04)。 */
+    val addTaskMessage: String? = null,
+    /** BUG-02：今天已有执行记录时,重确认前的强提醒(避免误覆盖)。 */
+    val showOverwriteWarning: Boolean = false,
 )
 
 data class EditablePlanTask(val id: String, val task: PlanTaskDto)
+
+/** 语音重生成计划时保留用户手动加的项(N-04:禁止静默丢)。 */
+private fun mergeManualTasks(
+    fromApi: List<EditablePlanTask>,
+    existing: List<EditablePlanTask>,
+): List<EditablePlanTask> {
+    val manual = existing.filter { it.id.startsWith("manual_") }
+    if (manual.isEmpty()) return fromApi
+    val apiIds = fromApi.map { it.id }.toSet()
+    return fromApi + manual.filter { it.id !in apiIds }
+}
 
 private fun PlanGenerateResponseDto.toEditableTasks(): List<EditablePlanTask> {
     return tasks.mapIndexed { index, task -> EditablePlanTask(id = "task_$index", task = task) } +
@@ -367,25 +426,8 @@ private fun PlanGenerateResponseDto.toEditableTasks(): List<EditablePlanTask> {
         }
 }
 
-/** 与 plan-generate 一致：当天本地时刻 + 时区偏移（如 `2026-06-04T15:00:00+08:00`）。 */
-private fun buildTodayIso(hour: Int, minute: Int): String {
-    val tz = TimeZone.currentSystemDefault()
-    val today = Clock.System.todayIn(tz)
-    val h = hour.coerceIn(0, 23)
-    val m = minute.coerceIn(0, 59)
-    val localDt = LocalDateTime(today, LocalTime(h, m))
-    val offset = localDt.toInstant(tz).offsetIn(tz)
-    return "${today}T${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:00${formatUtcOffset(offset)}"
-}
-
-private fun formatUtcOffset(offset: kotlinx.datetime.UtcOffset): String {
-    val totalSeconds = offset.totalSeconds
-    val sign = if (totalSeconds >= 0) '+' else '-'
-    val absSeconds = abs(totalSeconds)
-    val hours = absSeconds / 3600
-    val minutes = (absSeconds % 3600) / 60
-    return "$sign${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
-}
+/** BUG-12：统一走 todayLocalIso（本地偏移，与 plan-generate / 完整计划页一致）。 */
+private fun buildTodayIso(hour: Int, minute: Int): String = com.thinkandact.core.time.todayLocalIso(hour, minute)
 
 private fun inferTimeOfDay(hour: Int): String = when {
     hour < 12 -> "morning"

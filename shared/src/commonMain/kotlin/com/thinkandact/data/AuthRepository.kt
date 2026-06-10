@@ -29,10 +29,11 @@ import kotlinx.datetime.Clock
 class AuthRepository(
     private val httpClient: HttpClient,
     private val sessionStore: SessionStore,
+    private val sessionState: com.thinkandact.data.session.SessionState,
 ) {
     fun isLoggedIn(): Boolean = sessionStore.load() != null
 
-    fun logout() = sessionStore.clear()
+    fun logout() { sessionStore.clear(); sessionState.onLoggedOut() }
 
     suspend fun loginWithPhone(phone: String, code: String): SupabaseSession {
         // ───────────── //MOCK ─────────────
@@ -54,7 +55,7 @@ class AuthRepository(
             setBody(EmailAuthRequest(email, password))
         }
         if (!r.status.isSuccess()) throw IllegalStateException("signin ${r.status.value}")
-        return r.body<AnonymousSignInResponse>().toSession().also(sessionStore::save)
+        return r.body<AnonymousSignInResponse>().toSession().also { sessionStore.save(it); sessionState.onLoggedIn() }
     }
 
     private suspend fun signUp(email: String, password: String): SupabaseSession {
@@ -74,7 +75,7 @@ class AuthRepository(
                 throw IllegalStateException("建号未返回会话（可能开了邮箱确认）——需后端关闭 email 确认。")
             }
         }
-        return resp.toSession().also(sessionStore::save)
+        return resp.toSession().also { sessionStore.save(it); sessionState.onLoggedIn() }
     }
 
     private fun io.ktor.client.request.HttpRequestBuilder.authHeaders() {

@@ -10,7 +10,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.thinkandact.data.AuthRepository
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.thinkandact.data.session.SessionState
+import com.thinkandact.ui.common.AppBackHandler
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import com.thinkandact.ui.execution.ExecutionScreen
 import com.thinkandact.ui.fullplan.FullPlanScreen
 import com.thinkandact.ui.history.HistoryScreen
@@ -38,18 +44,33 @@ sealed class Screen {
 @Composable
 fun App() {
     ThinkAndActTheme {
-        val auth = koinInject<AuthRepository>()
-        // 登录门控:有会话 → 进首屏;无 → 登录页(本版 mock 手机号登录)。
-        var loggedIn by remember { mutableStateOf(auth.isLoggedIn()) }
+        val sessionState = koinInject<SessionState>()
+        // 登录门控（BUG-03）：响应式登录态——会话刷新失败时被置 false → 自动回登录页（不再静默匿名号）。
+        val loggedIn by sessionState.loggedIn.collectAsState()
         var legalDoc by remember { mutableStateOf<LegalDoc?>(null) }
 
         if (!loggedIn) {
+            // 协议页：系统返回键回登录页,不退 App。
+            AppBackHandler(enabled = legalDoc != null) { legalDoc = null }
             legalDoc?.let { LegalScreen(doc = it, onBack = { legalDoc = null }) }
-                ?: LoginScreen(onLoggedIn = { loggedIn = true }, onOpenLegal = { legalDoc = it })
+                ?: LoginScreen(onLoggedIn = {}, onOpenLegal = { legalDoc = it })
             return@ThinkAndActTheme
         }
 
         var currentScreen by remember { mutableStateOf<Screen>(Screen.Morning) }
+        // BUG-01：系统返回键/右滑 → 逐屏返回,而不是退 App。Morning 时不拦(默认退出)。
+        AppBackHandler(enabled = currentScreen != Screen.Morning) {
+            currentScreen = when (currentScreen) {
+                Screen.Review, Screen.FullPlan -> Screen.Execution
+                else -> Screen.Morning
+            }
+        }
+        // BUG-05：回前台时若已跨午夜 → 回到 Morning(重算 today、拉新一天),避免还显示昨天的任务。
+        var lastDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+            if (today != lastDate) { lastDate = today; currentScreen = Screen.Morning }
+        }
         val reminders: RemindersViewModel = koinViewModel()
         val activeReminder by reminders.active.collectAsState()
 

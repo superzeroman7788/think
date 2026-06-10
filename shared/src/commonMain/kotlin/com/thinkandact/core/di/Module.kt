@@ -35,11 +35,12 @@ val sharedModule = module {
         }
     }
     single { createHttpClient(get()) }
-    single { PlanRepository(get(), get()) }
+    single { com.thinkandact.data.session.SessionState(get()) }
+    single { PlanRepository(get(), get(), get()) }
     single { RoutineRepository(get(), get()) }
     single { ReviewRepository(get(), get()) }
     single { HistoryRepository(get(), get()) }
-    single { AuthRepository(get(), get()) }
+    single { AuthRepository(get(), get(), get()) }
 
     // 语音输入（FE-ASR-1）
     single { AudioRecorder() }

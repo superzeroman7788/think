@@ -3,6 +3,7 @@ package com.thinkandact.ui.review
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,11 +130,15 @@ fun ReviewScreen(
                         Text("今天没有安排可复盘。", style = TnaTypography.BodySoft)
                     } else {
                         state.tasks.forEach { task ->
-                            TaskReviewRow(task = task, onClick = { viewModel.cycleStatus(task.id) })
+                            TaskReviewRow(
+                                task = task,
+                                onClick = { viewModel.cycleStatus(task.id) },
+                                onLongClick = { viewModel.markSkipped(task.id) },
+                            )
                             Spacer(Modifier.height(8.dp))
                         }
                         Text(
-                            "点一行循环:未做 → 完成 → 跳过(或用下面那条语音一句话改)",
+                            "点一下:未做 ↔ 完成 · 长按标记跳过(或用下面语音改)",
                             style = TnaTypography.Mono.copy(color = TnaColors.Muted),
                         )
                     }
@@ -328,12 +333,15 @@ private fun Banner(text: String, onDismiss: (() -> Unit)?) {
 }
 
 @Composable
-private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit) {
+private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     val dropped = task.status == "dropped"
     val (label, color) = statusChip(task.status)
     Row(
         modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Input).border(1.dp, TnaColors.Line, TnaShapes.Input)
-            .then(if (dropped) Modifier else Modifier.clickable(onClick = onClick))
+            .then(
+                if (dropped) Modifier
+                else Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

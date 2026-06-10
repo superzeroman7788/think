@@ -141,6 +141,8 @@ fun MorningScreen(
                     aiComment = state.proposal!!.aiComment,
                     isConfirmed = state.isConfirmed,
                     saveErrorMessage = state.saveErrorMessage,
+                    addTaskMessage = state.addTaskMessage,
+                    onDismissAddTaskMessage = viewModel::dismissAddTaskMessage,
                     onDeleteTask = viewModel::deleteTask,
                     onToggleImportant = viewModel::toggleImportant,
                     onEditTime = { task -> editingTimeTask = task },
@@ -212,10 +214,26 @@ fun MorningScreen(
         AddTaskDialog(
             onDismiss = { showAddTask = false },
             onConfirm = { title, hour, minute ->
-                viewModel.addTask(title, hour, minute)
-                showAddTask = false
+                if (viewModel.addTask(title, hour, minute)) showAddTask = false
             }
         )
+    }
+
+    // BUG-02：今天已动过(有完成/跳过) → 重确认前强提醒。
+    if (state.showOverwriteWarning) {
+        TnaDialog(onDismiss = viewModel::dismissOverwriteWarning) {
+            Text("今天已经动过了", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                "今天已经有完成/跳过的记录。重新确认会替换还没做的安排——已完成、已跳过的都会保留。要继续吗?",
+                style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft),
+            )
+            DialogActions(
+                confirmText = "继续确认",
+                onDismiss = viewModel::dismissOverwriteWarning,
+                onConfirm = viewModel::confirmOverwrite,
+            )
+        }
     }
 }
 
@@ -448,6 +466,8 @@ private fun ProposalContent(
     aiComment: String,
     isConfirmed: Boolean,
     saveErrorMessage: String?,
+    addTaskMessage: String? = null,
+    onDismissAddTaskMessage: () -> Unit = {},
     onDeleteTask: (String) -> Unit,
     onToggleImportant: (String) -> Unit,
     onEditTime: (EditablePlanTask) -> Unit,
@@ -481,10 +501,31 @@ private fun ProposalContent(
         )
     }
     if (!isConfirmed) AddTaskRow(onClick = onAddTask, modifier = Modifier.padding(top = 2.dp, bottom = 9.dp))
+    addTaskMessage?.let { AddTaskFeedbackBanner(it, onDismissAddTaskMessage) }
 
     SectionLabel(text = "ai voice", modifier = Modifier.padding(top = 9.dp, bottom = 7.dp))
     AiVoicePanel(text = aiComment)
     saveErrorMessage?.let { ErrorPanel(message = it, onRetry = onRetrySave, modifier = Modifier.padding(top = 12.dp)) }
+}
+
+@Composable
+private fun AddTaskFeedbackBanner(message: String, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .background(TnaColors.LineSoft, TnaShapes.Input)
+            .border(1.dp, TnaColors.Line, TnaShapes.Input)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = message, modifier = Modifier.weight(1f), style = TnaTypography.AiVoice)
+        Text(
+            text = "知道了",
+            modifier = Modifier.padding(start = 10.dp).clickable(onClick = onDismiss),
+            style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold),
+        )
+    }
 }
 
 @Composable

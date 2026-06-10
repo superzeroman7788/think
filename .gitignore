@@ -25,6 +25,7 @@ docs/test-evidence/android-host-test-*
 
 # Local/tool outputs
 .playwright-cli/
+.ta_test/
 .DS_Store
 
 # Python cache

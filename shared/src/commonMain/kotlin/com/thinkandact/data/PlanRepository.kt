@@ -41,7 +41,8 @@ import kotlinx.datetime.todayIn
 
 class PlanRepository(
     private val httpClient: HttpClient,
-    private val sessionStore: SessionStore
+    private val sessionStore: SessionStore,
+    private val sessionState: com.thinkandact.data.session.SessionState,
 ) {
     suspend fun generatePlan(rawInput: String): PlanGenerateResponseDto {
         val session = ensureSession()
@@ -96,6 +97,22 @@ class PlanRepository(
         }
     }
 
+    /** BUG-02：今天是否已有执行记录(done/skipped)——重确认前据此强提醒,避免误覆盖白天进度。 */
+    suspend fun hasExecutedTasksToday(): Boolean {
+        val session = ensureSession()
+        val userId = session.userId?.takeIf { it.isNotBlank() } ?: return false
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val response = httpClient.get(
+            "${SupabaseConfig.URL}/rest/v1/tasks" +
+                "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null&status=in.(done,skipped)&select=id&limit=1"
+        ) {
+            supabaseHeaders(session.accessToken)
+            accept(ContentType.Application.Json)
+        }
+        if (!response.status.isSuccess()) return false
+        return response.bodyAsText().trim().let { it.isNotBlank() && it != "[]" }
+    }
+
     /** 执行屏（块一）：读当天未删除任务，按计划时间升序。 */
     /** @param includeSuggested 完整计划页要展示软建议(soft);执行/复盘默认排除。 */
     suspend fun fetchTodayTasks(includeSuggested: Boolean = false): List<TaskRowDto> {
@@ -120,14 +137,19 @@ class PlanRepository(
         return response.body()
     }
 
-    /** 完成：status=done + 实际起止回写（块一）。 */
-    suspend fun markTaskDone(id: String, actualStart: String, actualEnd: String) {
+    /** 完成：status=done + actual_end；actual_start 仅在有真实起点时写入（禁止用完成时刻冒充）。 */
+    suspend fun markTaskDone(id: String, actualEnd: String, actualStart: String? = null) {
         val session = ensureSession()
+        val body = if (actualStart != null) {
+            TaskDoneUpdateDto(actualStart = actualStart, actualEnd = actualEnd)
+        } else {
+            com.thinkandact.data.remote.ReviewDoneUpdateDto(actualEnd = actualEnd)
+        }
         val response = httpClient.patch(taskByIdUrl(id)) {
             supabaseHeaders(session.accessToken)
             header("Prefer", "return=minimal")
             contentType(ContentType.Application.Json)
-            setBody(TaskDoneUpdateDto(actualStart = actualStart, actualEnd = actualEnd))
+            setBody(body)
         }
         if (!response.status.isSuccess()) {
             throw IllegalStateException(response.bodyAsText().ifBlank { "Task done update failed." })
@@ -264,7 +286,10 @@ class PlanRepository(
             runCatching { refreshSession(existing.refreshToken) }
                 .onSuccess { return it }
         }
-        return signInAnonymously()
+        // BUG-03：刷新失败 → 清会话 + 置登录态 false（路由回登录页），**绝不静默建匿名号**。
+        sessionStore.clear()
+        sessionState.onLoggedOut()
+        throw com.thinkandact.data.session.SessionExpiredException()
     }
 
     private suspend fun signInAnonymously(): SupabaseSession {
@@ -300,9 +325,12 @@ class PlanRepository(
         userId: String,
         today: String
     ) {
+        // BUG-02：只软删**未执行**的(planned/suggested);已 done/skipped/dropped 的进度保留,
+        // 重确认不再抹掉当天白天进度、★提醒、历史"今天已完成"。
         val response = httpClient.patch(
             "${SupabaseConfig.URL}/rest/v1/tasks" +
-                "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null"
+                "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null" +
+                "&status=in.(planned,suggested)"
         ) {
             supabaseHeaders(session.accessToken)
             header("Prefer", "return=minimal")

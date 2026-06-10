@@ -91,22 +91,24 @@ class ExecutionViewModel(
         val cur = currentTask() ?: return
         if (uiState.value.pendingTaskId != null || uiState.value.isCompleting) return
         val now = Clock.System.now().toString()
-        // v1.3：完成时才(可选)写 actual_start,来自**本地起点**;没有本地起点就用现在。
+        // v1.3：完成时仅在有真实起点时写 actual_start(库内已有 / 本地变当前);禁止用完成时刻冒充。
         val actualStart = cur.actualStart
             ?: displayStartedAt[cur.id]?.let { kotlinx.datetime.Instant.fromEpochSeconds(it).toString() }
-            ?: now
-        // 完成动效（§4.4）：取消上涨、退潮到 .08（Canvas 用 0.8s 快补间），✓ 约 1.3s 后切下一条。
-        _uiState.update { it.copy(isCompleting = true, pendingTaskId = cur.id, tideLevel = 0.08f, errorMessage = null) }
+        // BUG-08：先确认保存成功,再播完成动效——不给「成了又没成」的假象。
+        _uiState.update { it.copy(pendingTaskId = cur.id, errorMessage = null) }
         viewModelScope.launch {
-            val ok = runCatching { planRepository.markTaskDone(cur.id, actualStart = actualStart, actualEnd = now) }.isSuccess
+            val ok = runCatching {
+                planRepository.markTaskDone(cur.id, actualEnd = now, actualStart = actualStart)
+            }.isSuccess
+            if (!ok) {
+                _uiState.update { it.copy(pendingTaskId = null, errorMessage = "刚才那一下没存上,再点一次就好。") }
+                return@launch
+            }
+            // 保存成功 → 完成动效（§4.4）：退潮到 .08 + ✓ 约 1.3s,再切下一条。
+            _uiState.update { it.copy(isCompleting = true, tideLevel = 0.08f) }
             delay(1300)
             _uiState.update { it.copy(isCompleting = false) }
-            if (ok) {
-                applyStatusAndAdvance(cur.id, "done", actualStart)
-            } else {
-                _uiState.update { it.copy(pendingTaskId = null, errorMessage = "刚才那一下没存上,再点一次就好。") }
-                recomputeTide()
-            }
+            applyStatusAndAdvance(cur.id, "done", actualStart)
         }
     }
 
@@ -156,27 +158,35 @@ class ExecutionViewModel(
             _uiState.update { it.copy(tideLevel = 0.20f, tideProgress = 0f, tideDusk = false, remText = "还剩约 $durMin 分", remNear = false) }
             return
         }
-        val nowSec = Clock.System.now().epochSeconds
-        // v1.3：elapsed 从「本地变当前那刻」起算,不再用 plannedStart/库 actual_start（不做成压力倒计时）。
-        val startSec = displayStartedAt.getOrPut(cur.id) { nowSec }
-        val durSec = durMin * 60L
-        val elapsed = (nowSec - startSec).coerceAtLeast(0L)
-        if (elapsed >= durSec) {
-            // 过点：在这件事上已花到计划时长；暮色 + .93 + 轻声（§2 / §1 不报警）。
-            _uiState.update { it.copy(tideLevel = 0.93f, tideProgress = 1f, tideDusk = true, remText = "已过点 · 现在做,还是跳过?", remNear = true) }
+        // BUG-04：时钟制·无状态——elapsed 从 actual_start(库内已开始)或 planned_start 当场算,
+        // 不再依赖内存 displayStartedAt（进程重建即丢、潮水/过点归零的老问题）。
+        val startSec = (cur.actualStart ?: cur.plannedStart)
+            ?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }
+        if (startSec == null) {
+            // 无固定时间：潮水基线,不做倒计时(对齐环心倒计时规格 §5)。
+            _uiState.update { it.copy(tideLevel = 0.20f, tideProgress = 0f, tideDusk = false, remText = "", remNear = false) }
             return
         }
-        val p = (elapsed.toFloat() / durSec).coerceIn(0f, 1f)
-        val remMin = ceil((durSec - elapsed) / 60.0).toInt().coerceAtLeast(0)
-        val near = remMin in 1..10
-        _uiState.update {
-            it.copy(
-                tideLevel = levelForP(p),
-                tideProgress = p,
-                tideDusk = false,
-                remText = if (remMin <= 10) "快到时间了" else "还剩约 $remMin 分",
-                remNear = near,
-            )
+        val nowSec = Clock.System.now().epochSeconds
+        val durSec = durMin * 60L
+        val endSec = startSec + durSec
+        when {
+            nowSec < startSec -> // 未开始：基线、亮点在起点。
+                _uiState.update { it.copy(tideLevel = 0.20f, tideProgress = 0f, tideDusk = false, remText = "", remNear = false) }
+            nowSec >= endSec -> // 过点：暮色 + .93 + 轻声（§2 / §1 不报警）。
+                _uiState.update { it.copy(tideLevel = 0.93f, tideProgress = 1f, tideDusk = true, remText = "已过点 · 现在做,还是跳过?", remNear = true) }
+            else -> {
+                val elapsed = nowSec - startSec
+                val p = (elapsed.toFloat() / durSec).coerceIn(0f, 1f)
+                val remMin = ceil((durSec - elapsed) / 60.0).toInt().coerceAtLeast(0)
+                _uiState.update {
+                    it.copy(
+                        tideLevel = levelForP(p), tideProgress = p, tideDusk = false,
+                        remText = if (remMin <= 10) "快到时间了" else "还剩约 $remMin 分",
+                        remNear = remMin in 1..10,
+                    )
+                }
+            }
         }
     }
 

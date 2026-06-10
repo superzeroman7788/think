@@ -70,9 +70,10 @@ class FullPlanViewModel(
     }
 
     // ── 点选微调（手动）────────────────────────────────────────────────
-    fun markDone(id: String) = patch(id) {
+    fun markDone(id: String) = patch(id) { taskId ->
+        val task = uiState.value.tasks.firstOrNull { t -> t.id == taskId }
         val now = Clock.System.now().toString()
-        planRepository.markTaskDone(it, actualStart = now, actualEnd = now)
+        planRepository.markTaskDone(taskId, actualEnd = now, actualStart = task?.actualStart)
     }
     fun markSkip(id: String) = patch(id) { planRepository.markTaskSkipped(it) }
     fun acceptSuggestion(id: String) = patch(id) { planRepository.markTaskPlanned(it) }
@@ -184,11 +185,6 @@ class FullPlanViewModel(
         else -> "语音没接上,先点选改也行。"
     }
 
-    private fun todayIsoAt(hour: Int, minute: Int): String {
-        val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
-        val today = Clock.System.todayIn(tz)
-        val h = hour.coerceIn(0, 23); val m = minute.coerceIn(0, 59)
-        val ldt = kotlinx.datetime.LocalDateTime(today, kotlinx.datetime.LocalTime(h, m))
-        return ldt.toInstant(tz).toString()
-    }
+    // BUG-12：统一时间格式（本地偏移），与早上屏一致。
+    private fun todayIsoAt(hour: Int, minute: Int): String = com.thinkandact.core.time.todayLocalIso(hour, minute)
 }

@@ -94,8 +94,10 @@ class ReviewViewModel(
             com.thinkandact.core.debug.FeDebug.reject("点行循环跳过 dropped(契约:dropped 只读)", "cycle ${task.title}")
             return
         }
+        // N-05: 已完成再点回到「未做」(撤销),不误滑到跳过;跳过用长按(见 ReviewScreen)。
         val next = when (task.status) {
-            "done" -> "skipped"
+            "planned" -> "done"
+            "done" -> "planned"
             "skipped" -> "planned"
             else -> "done"
         }
@@ -111,6 +113,30 @@ class ReviewViewModel(
             }.onFailure {
                 _uiState.update { st -> st.copy(tasks = st.tasks.map { if (it.id == taskId) it.copy(status = task.status) else it }, errorMessage = "刚那下没存上,再点一次。") }
             }
+        }
+    }
+
+    /** 长按标记跳过(planned → skipped);避免「完成」态一点就变跳过。 */
+    fun markSkipped(taskId: String) {
+        val task = uiState.value.tasks.firstOrNull { it.id == taskId } ?: return
+        if (task.status != "planned") return
+        _uiState.update { st ->
+            st.copy(
+                tasks = st.tasks.map { if (it.id == taskId) it.copy(status = "skipped") else it },
+                errorMessage = null,
+                reminderStale = st.praise.isNotBlank() || st.advice.isNotBlank(),
+            )
+        }
+        viewModelScope.launch {
+            runCatching { reviewRepository.markTaskSkippedReview(taskId) }
+                .onFailure {
+                    _uiState.update { st ->
+                        st.copy(
+                            tasks = st.tasks.map { if (it.id == taskId) it.copy(status = task.status) else it },
+                            errorMessage = "刚那下没存上,再试一次。",
+                        )
+                    }
+                }
         }
     }
 

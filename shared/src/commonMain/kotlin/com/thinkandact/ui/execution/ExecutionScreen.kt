@@ -189,13 +189,26 @@ fun ExecutionScreen(
             )
         }
 
-        state.errorMessage?.let {
-            Text(
-                text = it,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 110.dp).padding(horizontal = 24.dp),
-                style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep),
-                textAlign = TextAlign.Center,
-            )
+        state.errorMessage?.let { msg ->
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 110.dp)
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = msg,
+                    style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep),
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "再试一次",
+                    modifier = Modifier.padding(top = 8.dp).clickable { viewModel.load() },
+                    style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         // 即时反馈覆盖层(就地盖住「想调整」语音条,不抢已在进行的按住手势)。
