@@ -34,6 +34,15 @@ data class EmailAuthRequest(
 )
 
 @Serializable
+data class SmsSendRequest(val phone: String)
+
+@Serializable
+data class SmsLoginRequest(
+    val phone: String,
+    val code: String,
+)
+
+@Serializable
 data class PlanGenerateRequest(
     val date: String,
     @SerialName("raw_input") val rawInput: String,

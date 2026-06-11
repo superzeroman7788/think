@@ -2,7 +2,8 @@ package com.thinkandact.data
 
 import com.thinkandact.core.config.SupabaseConfig
 import com.thinkandact.data.remote.AnonymousSignInResponse
-import com.thinkandact.data.remote.EmailAuthRequest
+import com.thinkandact.data.remote.SmsLoginRequest
+import com.thinkandact.data.remote.SmsSendRequest
 import com.thinkandact.data.session.SessionStore
 import com.thinkandact.data.session.SupabaseSession
 import io.ktor.client.HttpClient
@@ -18,13 +19,8 @@ import io.ktor.http.isSuccess
 import kotlinx.datetime.Clock
 
 /**
- * 登录（发朋友版 = **MOCK**，不接真短信）。
- *
- * 账号按**手机号** create-or-fetch：用「合成 email + 确定性密码」当账号键，在 Supabase
- * 建/取该用户（跳过 OTP）。不同手机号 = 不同 user_id = 数据分开。
- *
- * 换真短信时：只把 [loginWithPhone] 里 `//MOCK` 那段「任意码通过」换成「校验真实 OTP」，
- * 其余（建/取账号、存会话）不动。
+ * 手机号 + 短信验证码登录（C-10）。
+ * 发码/校验走 Edge Function + 阿里云 PNVS；账号仍用合成 email 键 create-or-fetch。
  */
 class AuthRepository(
     private val httpClient: HttpClient,
@@ -35,47 +31,41 @@ class AuthRepository(
 
     fun logout() { sessionStore.clear(); sessionState.onLoggedOut() }
 
+    suspend fun sendSmsCode(phone: String) {
+        val response = httpClient.post("${SupabaseConfig.URL}/functions/v1/auth-sms-send") {
+            authHeaders()
+            contentType(ContentType.Application.Json)
+            setBody(SmsSendRequest(phone = phone))
+        }
+        if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            com.thinkandact.core.debug.FeDebug.backend("/auth-sms-send", response.status.value, null, body)
+            throw IllegalStateException(parseApiErrorMessage(body) ?: "验证码没发出去,过一下再试。")
+        }
+    }
+
     suspend fun loginWithPhone(phone: String, code: String): SupabaseSession {
-        // ───────────── //MOCK ─────────────
-        // 测试期：任意验证码即通过（不发真短信、不校验 OTP）。
-        // 换真短信：此处改为向 SMS 服务商校验 `code`，校验失败抛错；下面的建/取账号不变。
         require(code.isNotBlank()) { "请输入验证码" }
-        // ───────────── //MOCK end ─────────
-        val email = "$phone@mock.thinkandact.app"
-        val password = "mock_${phone}_tna" // 确定性 → 同手机号永远取到同一账号
-        // 1) 已有账号：密码登录
-        runCatching { signIn(email, password) }.getOrNull()?.let { return it }
-        // 2) 没有：注册（项目已关邮箱确认 → 直接返回 session）
-        return signUp(email, password)
+        val response = httpClient.post("${SupabaseConfig.URL}/functions/v1/auth-sms-login") {
+            authHeaders()
+            contentType(ContentType.Application.Json)
+            setBody(SmsLoginRequest(phone = phone, code = code))
+        }
+        if (!response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            com.thinkandact.core.debug.FeDebug.backend("/auth-sms-login", response.status.value, null, body)
+            throw IllegalStateException(parseApiErrorMessage(body) ?: "登录没成功,过一下再试。")
+        }
+        return response.body<AnonymousSignInResponse>().toSession()
+            .also { sessionStore.save(it); sessionState.onLoggedIn() }
     }
 
-    private suspend fun signIn(email: String, password: String): SupabaseSession {
-        val r = httpClient.post("${SupabaseConfig.URL}/auth/v1/token?grant_type=password") {
-            authHeaders(); contentType(ContentType.Application.Json)
-            setBody(EmailAuthRequest(email, password))
-        }
-        if (!r.status.isSuccess()) throw IllegalStateException("signin ${r.status.value}")
-        return r.body<AnonymousSignInResponse>().toSession().also { sessionStore.save(it); sessionState.onLoggedIn() }
-    }
-
-    private suspend fun signUp(email: String, password: String): SupabaseSession {
-        val r = httpClient.post("${SupabaseConfig.URL}/auth/v1/signup") {
-            authHeaders(); contentType(ContentType.Application.Json)
-            setBody(EmailAuthRequest(email, password))
-        }
-        if (!r.status.isSuccess()) {
-            val body = r.bodyAsText()
-            com.thinkandact.core.debug.FeDebug.backend("/auth signup", r.status.value, null, body)
-            throw IllegalStateException(body.ifBlank { "注册失败" })
-        }
-        val resp = r.body<AnonymousSignInResponse>()
-        // 若未直接给 token（万一开了邮箱确认）→ 再尝试登录；仍无则报错（卡点：需 Cursor 关确认）。
-        if (resp.accessToken.isNullOrBlank()) {
-            return runCatching { signIn(email, password) }.getOrElse {
-                throw IllegalStateException("建号未返回会话（可能开了邮箱确认）——需后端关闭 email 确认。")
-            }
-        }
-        return resp.toSession().also { sessionStore.save(it); sessionState.onLoggedIn() }
+    private fun parseApiErrorMessage(body: String): String? {
+        val match = Regex(""""message"\s*:\s*"((?:\\.|[^"\\])*)"""").find(body) ?: return null
+        return match.groupValues[1]
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .takeIf { it.isNotBlank() }
     }
 
     private fun io.ktor.client.request.HttpRequestBuilder.authHeaders() {

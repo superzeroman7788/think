@@ -103,7 +103,11 @@ fun LoginScreen(
         // 验证码 + 获取
         FieldRow {
             PlainInput(value = s.code, onChange = viewModel::onCode, placeholder = "验证码", modifier = Modifier.weight(1f))
-            val codeLabel = if (s.countdown > 0) "${s.countdown}s 后重发" else "获取验证码"
+            val codeLabel = when {
+                s.isSendingCode -> "发送中…"
+                s.countdown > 0 -> "${s.countdown}s 后重发"
+                else -> "获取验证码"
+            }
             Text(
                 codeLabel,
                 modifier = Modifier.clickable(enabled = s.canSendCode, onClick = viewModel::sendCode),
@@ -162,7 +166,7 @@ fun LoginScreen(
         }
 
         Spacer(Modifier.height(10.dp))
-        Text("未注册的手机号将自动创建账号 · 测试期任意验证码可进", style = TnaTypography.Mono.copy(color = TnaColors.MutedSoft), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text("未注册的手机号将自动创建账号 · 验证码 5 分钟内有效", style = TnaTypography.Mono.copy(color = TnaColors.MutedSoft), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
         // 分隔 + 微信占位
         Spacer(Modifier.height(26.dp))
