@@ -94,6 +94,22 @@ fun InboxScreen(
                     }
                     else -> InboxList(state, onDelete = viewModel::delete, onAddToday = { viewModel.addToday(it) }, pendingId = state.pendingActionId)
                 }
+
+                // F-14:条目操作失败 → 底部轻提示,列表不被顶掉,点一下消失。
+                state.itemActionError?.let { msg ->
+                    Row(
+                        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                            .background(TnaColors.Surface, RoundedCornerShape(12.dp))
+                            .border(1.dp, TnaColors.Line, RoundedCornerShape(12.dp))
+                            .clickable { viewModel.dismissItemActionError() }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(msg, modifier = Modifier.weight(1f), style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep))
+                        Text("知道了", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold))
+                    }
+                }
             }
         }
 
@@ -196,7 +212,7 @@ private fun CaptureSheet(viewModel: InboxViewModel, state: InboxUiState) {
         ) {
             Text("记一笔", style = TnaTypography.SectionTitle.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
             Spacer(Modifier.height(4.dp))
-            Text("先放进收件箱,到那天早上我再提你 —— 今天的计划不动。", style = TnaTypography.Mono.copy(color = TnaColors.MutedSoft))
+            Text("先放进收件箱,到那天早上我再提醒你 —— 今天的计划不动。", style = TnaTypography.Mono.copy(color = TnaColors.MutedSoft))
             Spacer(Modifier.height(14.dp))
 
             // 输入框(可打字,转写也落这里)

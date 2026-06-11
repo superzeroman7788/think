@@ -193,7 +193,7 @@ class ReviewViewModel(
     private fun onVoiceComplete() {
         endVoice()
         val text = uiState.value.transcript.trim()
-        if (text.isBlank()) { _uiState.update { it.copy(voiceHint = "没听清,再说一次?") }; return }
+        if (text.isBlank()) { _uiState.update { it.copy(voiceHint = "没听清,再说一次？") }; return }
         parseBatch(text)
     }
 
@@ -210,7 +210,7 @@ class ReviewViewModel(
                         handling = if (noOp) "无可应用 → 提示用户" else "渲染前后对比",
                     )
                     if (noOp) {
-                        val hint = res.warnings.firstOrNull()?.takeIf { it.isNotBlank() } ?: "没听清,换种说法?"
+                        val hint = res.warnings.firstOrNull()?.takeIf { it.isNotBlank() } ?: "没听清,换种说法？"
                         if (!res.unclear && res.warnings.isEmpty()) {
                             com.thinkandact.core.debug.FeDebug.reject("review-parse 返回无操作且后端无 reason", transcript)
                         }
@@ -238,7 +238,7 @@ class ReviewViewModel(
                         _uiState.update { it.copy(isApplying = false, parseResult = null, voiceHint = t.message) }
                         load()
                     } else {
-                        _uiState.update { it.copy(isApplying = false, voiceHint = "刚才没存上,再说一次?") }
+                        _uiState.update { it.copy(isApplying = false, voiceHint = "刚才没存上,再说一次？") }
                     }
                 }
         }

@@ -20,7 +20,7 @@ fun TnaInputBubble(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "想调整今天的安排?跟我说一声"
+    placeholder: String = "想调整今天的安排？跟我说一声"
 ) {
     BasicTextField(
         value = value,

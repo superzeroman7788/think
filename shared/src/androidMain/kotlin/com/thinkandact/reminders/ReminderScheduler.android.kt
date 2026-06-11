@@ -40,6 +40,16 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
         runCatching { context.startActivity(intent) }
     }
 
+    override fun openNotificationSettings() {
+        // F-13:直跳本应用的通知设置页;失败回退到应用详情页。
+        val notifIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val ok = runCatching { context.startActivity(notifIntent); true }.getOrDefault(false)
+        if (!ok) openBackgroundSettings()
+    }
+
     private companion object {
         const val KEY_GUIDE_SHOWN = "bg_guide_shown"
     }

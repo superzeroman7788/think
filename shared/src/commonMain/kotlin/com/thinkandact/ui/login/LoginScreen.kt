@@ -34,6 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -106,35 +112,48 @@ fun LoginScreen(
         }
 
         Spacer(Modifier.height(18.dp))
-        // 进入
+        // 进入 — F-10:灰态真禁用,clickable 跟随 canLogin。
         Box(
             modifier = Modifier.fillMaxWidth().height(50.dp)
                 .background(if (s.canLogin) TnaColors.Accent else Color(0xFFDEC9BC), RoundedCornerShape(14.dp))
-                .clickable(enabled = !s.isLoading) { viewModel.login(onLoggedIn) },
+                .clickable(enabled = s.canLogin) { viewModel.login(onLoggedIn) }
+                .semantics { contentDescription = if (s.canLogin) "进入" else "进入(暂不可用)" },
             contentAlignment = Alignment.Center,
         ) {
             if (s.isLoading) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
             else Text("进入", style = TnaTypography.Body.copy(color = Color.White, fontWeight = FontWeight.Bold))
         }
 
-        s.error?.let {
+        // F-10:缺什么的顺序提示(手机号 → 验证码 → 协议),解释按钮为何灰着。
+        (s.error ?: s.gateHint)?.let {
             Spacer(Modifier.height(10.dp))
             Text(it, style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep), textAlign = TextAlign.Center)
         }
 
         Spacer(Modifier.height(14.dp))
-        // 协议勾选门控
-        Row(verticalAlignment = Alignment.Top) {
+        // 协议勾选门控 — F-10:扩大点选热区(整行可点)+ 无障碍语义。
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = viewModel::toggleAgree,
+                )
+                .semantics {
+                    contentDescription = if (s.agreed) "已同意用户协议与隐私政策,点按取消" else "我已阅读并同意用户协议与隐私政策,点按勾选"
+                    role = Role.Checkbox
+                    toggleableState = if (s.agreed) ToggleableState.On else ToggleableState.Off
+                }
+                .padding(vertical = 4.dp),
+        ) {
             Box(
-                modifier = Modifier.size(18.dp).padding(top = 1.dp)
+                modifier = Modifier.size(20.dp)
                     .background(if (s.agreed) TnaColors.Accent else Color.Transparent, RoundedCornerShape(5.dp))
-                    .border(1.5.dp, if (s.agreed) TnaColors.Accent else Color(0xFFD8C4B5), RoundedCornerShape(5.dp))
-                    .clickable(onClick = viewModel::toggleAgree),
+                    .border(1.5.dp, if (s.agreed) TnaColors.Accent else Color(0xFFD8C4B5), RoundedCornerShape(5.dp)),
                 contentAlignment = Alignment.Center,
             ) { if (s.agreed) Text("✓", style = TnaTypography.Mono.copy(color = Color.White)) }
-            Row(modifier = Modifier.padding(start = 8.dp)) {
-                Text("我已阅读并同意 ", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
-            }
+            Text("我已阅读并同意 ", modifier = Modifier.padding(start = 8.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         }
         Row(modifier = Modifier.padding(start = 26.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("《用户协议》", modifier = Modifier.clickable { onOpenLegal(LegalDoc.TERMS) }, style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))

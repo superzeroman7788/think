@@ -71,6 +71,8 @@ import com.thinkandact.ui.theme.TnaColors
 import com.thinkandact.ui.theme.TnaShapes
 import com.thinkandact.ui.theme.TnaTypography
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import com.thinkandact.voice.rememberMicPermissionController
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
@@ -104,10 +106,12 @@ fun MorningScreen(
     val confirmScope = rememberCoroutineScope()
     val onConfirmPlan: () -> Unit = {
         confirmScope.launch {
+            // F-13:含 ★ 且权限被拒 → 弹门控,**不**继续确认/导航(避免「去设置」时已被带进执行屏)。
             if (viewModel.hasImportantTasks() && !notifPerm.request()) {
                 viewModel.onNotifPermissionDenied()
+            } else {
+                viewModel.confirmPlan()
             }
-            viewModel.confirmPlan()
         }
     }
 
@@ -254,7 +258,7 @@ fun MorningScreen(
             Text("今天已经动过了", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                "今天已经有完成/跳过的记录。重新确认会替换还没做的安排——已完成、已跳过的都会保留。要继续吗?",
+                "今天已经有完成/跳过的记录。重新确认会替换还没做的安排——已完成、已跳过的都会保留。要继续吗？",
                 style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft),
             )
             DialogActions(
@@ -265,17 +269,16 @@ fun MorningScreen(
         }
     }
 
-    // 第四批 N-04:通知权限被拒 → 轻引导一次(可去设置打开,不纠缠)。
+    // N-04/F-13:通知权限被拒门控——「去设置」真跳系统通知设置,「仍然继续」照常确认。
     state.notifHint?.let { hint ->
-        TnaDialog(onDismiss = viewModel::dismissNotifHint) {
+        TnaDialog(onDismiss = viewModel::confirmAnyway) {
             Text("提醒可能响不了", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
             Spacer(modifier = Modifier.height(10.dp))
             Text(hint, style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft))
-            DialogActions(
-                confirmText = "去设置",
-                onDismiss = viewModel::dismissNotifHint,
-                onConfirm = viewModel::openNotifSettings,
-            )
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TnaButton("仍然继续", onClick = viewModel::confirmAnyway, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
+                TnaButton("去设置", onClick = viewModel::openNotifSettings, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
@@ -627,9 +630,18 @@ private fun AddTaskFeedbackBanner(message: String, onDismiss: () -> Unit) {
 
 @Composable
 private fun MorningInput(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    // F-11/F-12:用 TextFieldValue 守住光标与选区。外部 value 变了(语音转写/清空/加载回填)才同步进来,
+    // 并把光标放到末尾;用户自己打字只上抛文本、不被回流的同值打断 → 不丢字、不被替换、按钮可用性跟随。
+    var tfv by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    if (value != tfv.text) {
+        tfv = TextFieldValue(value, TextRange(value.length))
+    }
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = tfv,
+        onValueChange = { next ->
+            tfv = next
+            if (next.text != value) onValueChange(next.text)
+        },
         textStyle = TnaTypography.Body.copy(color = TnaColors.Ink),
         cursorBrush = SolidColor(TnaColors.Accent),
         modifier = modifier
@@ -826,11 +838,12 @@ private fun TimeStepSelector(minutesOfDay: Int, onMinutesChange: (Int) -> Unit) 
     ) {
         Text(text = display, style = TnaTypography.Display.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.Bold))
         Spacer(modifier = Modifier.height(12.dp))
+        // F-17:单日聚焦,夹在今天 00:00–23:59,到边界就停,不回绕到昨天/明天。
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TimeStepButton("-1h", Modifier.weight(1f)) { onMinutesChange(((normalized - 60) % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY) }
-            TimeStepButton("-15m", Modifier.weight(1f)) { onMinutesChange(((normalized - 15) % MINUTES_PER_DAY + MINUTES_PER_DAY) % MINUTES_PER_DAY) }
-            TimeStepButton("+15m", Modifier.weight(1f)) { onMinutesChange((normalized + 15) % MINUTES_PER_DAY) }
-            TimeStepButton("+1h", Modifier.weight(1f)) { onMinutesChange((normalized + 60) % MINUTES_PER_DAY) }
+            TimeStepButton("-1h", Modifier.weight(1f)) { onMinutesChange((normalized - 60).coerceIn(0, MINUTES_PER_DAY - 1)) }
+            TimeStepButton("-15m", Modifier.weight(1f)) { onMinutesChange((normalized - 15).coerceIn(0, MINUTES_PER_DAY - 1)) }
+            TimeStepButton("+15m", Modifier.weight(1f)) { onMinutesChange((normalized + 15).coerceIn(0, MINUTES_PER_DAY - 1)) }
+            TimeStepButton("+1h", Modifier.weight(1f)) { onMinutesChange((normalized + 60).coerceIn(0, MINUTES_PER_DAY - 1)) }
         }
     }
 }
@@ -931,7 +944,7 @@ private fun ProposalFooter(
                 onCancel = onCancel,
                 onCancelArmedChange = onCancelArmedChange,
                 onBarCenter = onBarCenter,
-                idleLabel = "想调整?按住说话告诉我",
+                idleLabel = "想调整？按住说话告诉我",
                 recordingLabel = "在听,说吧 · 松开重新生成"
             )
             Spacer(modifier = Modifier.height(10.dp))

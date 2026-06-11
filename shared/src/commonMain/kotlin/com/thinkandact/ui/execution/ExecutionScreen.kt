@@ -52,6 +52,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -258,6 +260,7 @@ private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, onOpe
                 modifier = Modifier
                     .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
                     .clickable(onClick = onOpenInbox)
+                    .semantics { contentDescription = if (inboxBadge > 0) "收件箱,$inboxBadge 条待处理" else "收件箱" }
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 Text(text = "▤", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep))
@@ -372,7 +375,7 @@ private sealed interface RingCountdown {
     data class Before(val minutes: Int) : RingCountdown
     /** planned_start ≤ now < planned_end：大「X 分」+ 小「距结束」/「快到时间了」(X≤10)。 */
     data class During(val minutes: Int) : RingCountdown
-    /** now ≥ planned_end 未完成：三行「超」/「X 分」/「该收尾了?」。 */
+    /** now ≥ planned_end 未完成：三行「超」/「X 分」/「该收尾了？」。 */
     data class Over(val minutes: Int) : RingCountdown
 }
 
@@ -424,7 +427,7 @@ private fun RingCenterCountdown(cd: RingCountdown?) {
             BigMinutes(cd.minutes)
             Spacer(modifier = Modifier.height(4.dp))
             // 温和、带问号，不是命令/失败。
-            RingSub(text = "该收尾了?", near = false)
+            RingSub(text = "该收尾了？", near = false)
         }
     }
 }
@@ -445,7 +448,7 @@ private fun BigMinutes(minutes: Int) {
     }
 }
 
-/** 小字副标题（距开始/距结束/快到时间了/该收尾了?）。 */
+/** 小字副标题（距开始/距结束/快到时间了/该收尾了？）。 */
 @Composable
 private fun RingSub(text: String, near: Boolean) {
     Text(
@@ -548,7 +551,7 @@ private fun ExecutionFooter(
                 onPressUp = onRevisePressUp,
                 onCancel = onReviseCancel,
                 onCancelArmedChange = onReviseCancelArmedChange,
-                idleLabel = "想调整今天?按住跟我说",
+                idleLabel = "想调整今天？按住跟我说",
                 recordingLabel = "在听,说吧 · 松开重排",
             )
         }

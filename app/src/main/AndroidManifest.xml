@@ -19,10 +19,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ThinkAndAct">
         <!-- N-03:singleTask——点提醒通知拉起已存在实例时走 onNewIntent,extra 不丢 -->
+        <!-- F-15:v0.1 无横屏场景,锁竖屏,顺带终结旋转跳页/旧输入还魂(BUG-11) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.ThinkAndAct">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

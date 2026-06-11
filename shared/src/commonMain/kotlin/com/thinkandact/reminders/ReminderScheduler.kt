@@ -30,6 +30,9 @@ interface ReminderScheduler {
 
     /** 打开系统设置页引导白名单(Android 跳电池优化设置;iOS no-op)。 */
     fun openBackgroundSettings()
+
+    /** F-13:直接打开本应用的**系统通知设置页**(Android ACTION_APP_NOTIFICATION_SETTINGS;iOS no-op)。 */
+    fun openNotificationSettings()
 }
 
 /**

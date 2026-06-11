@@ -22,6 +22,18 @@ data class LoginUiState(
     val phoneValid get() = phone.length == 11 && phone.all { it.isDigit() }
     val canSendCode get() = phoneValid && countdown == 0
     val canLogin get() = phoneValid && code.isNotBlank() && agreed && !isLoading
+    /**
+     * F-10:灰按钮真禁用的口径(进入按钮 clickable=canLogin)。
+     * 同时给「缺什么」的顺序提示(手机号 → 验证码 → 协议),让用户知道为何灰着。
+     */
+    val gateHint: String?
+        get() = when {
+            isLoading -> null
+            !phoneValid -> "请输入 11 位手机号"
+            code.isBlank() -> "请输入验证码"
+            !agreed -> "请勾选并同意下方协议"
+            else -> null
+        }
 }
 
 class LoginViewModel(

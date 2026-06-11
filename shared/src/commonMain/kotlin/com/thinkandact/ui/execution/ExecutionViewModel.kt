@@ -193,7 +193,7 @@ class ExecutionViewModel(
             nowSec < startSec -> // 未开始：基线、亮点在起点。
                 _uiState.update { it.copy(tideLevel = 0.20f, tideProgress = 0f, tideDusk = false, remText = "", remNear = false) }
             nowSec >= endSec -> // 过点：暮色 + .93 + 轻声（§2 / §1 不报警）。
-                _uiState.update { it.copy(tideLevel = 0.93f, tideProgress = 1f, tideDusk = true, remText = "已过点 · 现在做,还是跳过?", remNear = true) }
+                _uiState.update { it.copy(tideLevel = 0.93f, tideProgress = 1f, tideDusk = true, remText = "已过点 · 现在做,还是跳过？", remNear = true) }
             else -> {
                 val elapsed = nowSec - startSec
                 val p = (elapsed.toFloat() / durSec).coerceIn(0f, 1f)
@@ -320,7 +320,7 @@ class ExecutionViewModel(
         endReviseCapture()
         val text = uiState.value.reviseTranscript.trim()
         if (text.isBlank()) {
-            _uiState.update { it.copy(reviseHint = "没听清,再说一次?") }
+            _uiState.update { it.copy(reviseHint = "没听清,再说一次？") }
             return
         }
         lastInstruction = text
@@ -353,7 +353,7 @@ class ExecutionViewModel(
                             // 静默拒(v1.3 禁止):后端没给 reason → 才用兜底句,并记一条(催 BE)。
                             com.thinkandact.core.debug.FeDebug.reject("propose 无可应用操作且后端无 reject_reason/warnings(违反 v1.3)", instruction)
                         }
-                        val hint = beReason ?: "这句我没听出要改什么,换种说法?"
+                        val hint = beReason ?: "这句我没听出要改什么,换种说法？"
                         _uiState.update { it.copy(isProposing = false, proposal = null, reviseHint = hint) }
                     } else {
                         _uiState.update { it.copy(isProposing = false, proposal = proposal) }
@@ -510,7 +510,8 @@ data class ExecutionUiState(
 ) {
     val currentTask: TaskRowDto? get() = tasks.firstOrNull { it.id == currentTaskId }
     /** 进度 = 已处理(完成 + 跳过 + 不做了)/ 总数。 */
-    val progressCount: Int get() = tasks.count { it.status != "planned" }
+    // 第五批文案小批:跳过是主动选择,不计入分子——与历史「做成/共」同口径。
+    val progressCount: Int get() = tasks.count { it.status == "done" }
     val totalCount: Int get() = tasks.size
     val allCleared: Boolean get() = tasks.isNotEmpty() && currentTaskId == null
 }

@@ -28,6 +28,8 @@ data class InboxUiState(
     val errorMessage: String? = null,
     val items: List<InboxItemDto> = emptyList(),
     val pendingActionId: String? = null,
+    /** F-14:条目级操作失败提示(删除/加入等);**不**用整页 errorMessage 顶掉列表。 */
+    val itemActionError: String? = null,
     // 记一笔 sheet
     val captureOpen: Boolean = false,
     val isRecording: Boolean = false,
@@ -92,18 +94,22 @@ class InboxViewModel(
     }
 
     // ── 条目操作 ───────────────────────────────────────────────────
-    fun addToday(item: InboxItemDto) = act(item.id) { inboxRepository.addToday(item.id) }
-    fun dismiss(id: String) = act(id) { inboxRepository.dismiss(id) }
-    fun delete(id: String) = act(id) { inboxRepository.delete(id) }
-    fun setDue(id: String, dueDate: String?, duePart: String?) = act(id) { inboxRepository.setDue(id, dueDate, duePart) }
+    // F-14:失败文案按动作区分(删除≠加入≠改期),且失败不顶掉列表。
+    fun addToday(item: InboxItemDto) = act(item.id, "加进今天没成功,再试一次？") { inboxRepository.addToday(item.id) }
+    fun dismiss(id: String) = act(id, "没收起来,再试一次？") { inboxRepository.dismiss(id) }
+    fun delete(id: String) = act(id, "没删掉,再试一次？") { inboxRepository.delete(id) }
+    fun setDue(id: String, dueDate: String?, duePart: String?) = act(id, "日子没改上,再试一次？") { inboxRepository.setDue(id, dueDate, duePart) }
 
-    private fun act(id: String, op: suspend () -> Unit) {
+    fun dismissItemActionError() { _uiState.update { it.copy(itemActionError = null) } }
+
+    private fun act(id: String, failMessage: String, op: suspend () -> Unit) {
         if (uiState.value.pendingActionId != null) return
         viewModelScope.launch {
-            _uiState.update { it.copy(pendingActionId = id, errorMessage = null) }
+            _uiState.update { it.copy(pendingActionId = id, itemActionError = null) }
             runCatching { op() }
                 .onSuccess { _uiState.update { it.copy(pendingActionId = null) }; load() }
-                .onFailure { t -> _uiState.update { it.copy(pendingActionId = null, errorMessage = t.message ?: "没存上,再试一次。") } }
+                // F-14:列表保持原样(不 reload、不写 errorMessage),只给条目级提示。
+                .onFailure { _uiState.update { it.copy(pendingActionId = null, itemActionError = failMessage) } }
         }
     }
 

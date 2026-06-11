@@ -71,7 +71,7 @@ class VoiceInputService(
                 throw e
             } catch (e: Throwable) {
                 // 第四批 N-10:一帧都没采到 = 设备/权限级失败(被占用/初始化失败)→ 报真实原因,
-                // 不能放任走到「没听清,再说一次?」误导排查。采到一半的异常仍交下游收尾。
+                // 不能放任走到「没听清,再说一次？」误导排查。采到一半的异常仍交下游收尾。
                 com.thinkandact.core.debug.FeDebug.raw(com.thinkandact.core.debug.FeDebug.Layer.BACKEND, "录音采集失败(原始): ${e.message ?: e}")
                 if (!gotAudio) {
                     trySend(AsrEvent.Failed("麦克风没启动起来(可能被其他应用占用或没权限),检查后再试。"))

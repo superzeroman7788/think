@@ -231,7 +231,7 @@ private fun ReviewHeader(onBack: () -> Unit) {
             modifier = Modifier.size(40.dp).clip(RoundedCornerShape(999.dp)).background(TnaColors.Surface).clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) { Text("←", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold)) }
-        Text("  复盘", style = TnaTypography.SectionTitle.copy(color = TnaColors.Ink))
+        Text("复盘", modifier = Modifier.padding(start = 8.dp), style = TnaTypography.SectionTitle.copy(color = TnaColors.Ink))
     }
 }
 

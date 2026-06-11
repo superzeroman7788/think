@@ -130,7 +130,7 @@ class FullPlanViewModel(
     private fun onCaptureDone() {
         endVoice()
         val text = uiState.value.transcript.trim()
-        if (text.isBlank()) { _uiState.update { it.copy(reviseHint = "没听清,再说一次?") }; return }
+        if (text.isBlank()) { _uiState.update { it.copy(reviseHint = "没听清,再说一次？") }; return }
         propose(text)
     }
 
@@ -145,12 +145,12 @@ class FullPlanViewModel(
                     if (!hasChange) {
                         val reason = p.rejectReason?.takeIf { it.isNotBlank() } ?: p.warnings.firstOrNull()?.takeIf { it.isNotBlank() }
                         if (reason == null) com.thinkandact.core.debug.FeDebug.reject("propose 无操作且无 reject_reason", instruction)
-                        _uiState.update { it.copy(isProposing = false, proposal = null, reviseHint = reason ?: "这句我没听出要改什么,换种说法?") }
+                        _uiState.update { it.copy(isProposing = false, proposal = null, reviseHint = reason ?: "这句我没听出要改什么,换种说法？") }
                     } else {
                         _uiState.update { it.copy(isProposing = false, proposal = p) }
                     }
                 }
-                .onFailure { t -> _uiState.update { it.copy(isProposing = false, reviseHint = t.message ?: "刚没接上,再说一次?") } }
+                .onFailure { t -> _uiState.update { it.copy(isProposing = false, reviseHint = t.message ?: "刚没接上,再说一次？") } }
         }
     }
 
@@ -172,7 +172,7 @@ class FullPlanViewModel(
                 .onSuccess { _uiState.update { it.copy(isApplying = false, proposal = null, reviseHint = "好,按你说的调整了。") }; load() }
                 .onFailure { t ->
                     if (t is PlanReviseStaleException) { _uiState.update { it.copy(isApplying = false, proposal = null, reviseHint = t.message) }; load() }
-                    else _uiState.update { it.copy(isApplying = false, reviseHint = t.message ?: "刚没存上,再试一次?") }
+                    else _uiState.update { it.copy(isApplying = false, reviseHint = t.message ?: "刚没存上,再试一次？") }
                 }
         }
     }

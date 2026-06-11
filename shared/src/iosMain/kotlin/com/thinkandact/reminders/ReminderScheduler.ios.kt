@@ -35,4 +35,5 @@ class IosReminderScheduler : ReminderScheduler {
     override fun shouldShowBackgroundGuide(): Boolean = false
     override fun markBackgroundGuideShown() {}
     override fun openBackgroundSettings() {}
+    override fun openNotificationSettings() {} // iOS 设置跳转需 UIApplication,本批不接,留空。
 }

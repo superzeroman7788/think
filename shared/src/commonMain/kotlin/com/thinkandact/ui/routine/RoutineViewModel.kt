@@ -98,7 +98,7 @@ class RoutineViewModel(
         endCapture()
         val text = uiState.value.voiceTranscript.trim()
         if (text.isBlank()) {
-            _uiState.update { it.copy(voiceHint = "没听清,再按住说一次?") }
+            _uiState.update { it.copy(voiceHint = "没听清,再按住说一次？") }
             return
         }
         _uiState.update { it.copy(isParsing = true, voiceHint = null) }

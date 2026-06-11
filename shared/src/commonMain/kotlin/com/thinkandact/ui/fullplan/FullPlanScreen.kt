@@ -92,7 +92,7 @@ fun FullPlanScreen(
                     modifier = Modifier.size(40.dp).clip(RoundedCornerShape(999.dp)).background(TnaColors.Surface).clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) { Text("←", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold)) }
-                Text("  今天的完整计划", style = TnaTypography.SectionTitle.copy(color = TnaColors.Ink))
+                Text("今天的完整计划", modifier = Modifier.padding(start = 8.dp), style = TnaTypography.SectionTitle.copy(color = TnaColors.Ink))
             }
 
             Column(modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 12.dp)) {
@@ -287,7 +287,7 @@ private fun remText(t: TaskRowDto, nowSec: Long, st: RowState): String? {
     return when {
         nowSec < s -> "还剩约 ${fmtDur(s - nowSec)}开始"
         nowSec < e -> "还剩约 ${fmtDur(e - nowSec)}结束"
-        else -> "超了约 ${fmtDur(nowSec - e)}· 该收尾了?"
+        else -> "超了约 ${fmtDur(nowSec - e)}· 该收尾了？"
     }
 }
 

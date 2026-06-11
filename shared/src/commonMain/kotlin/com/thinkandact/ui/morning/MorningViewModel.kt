@@ -130,7 +130,7 @@ class MorningViewModel(
                             // 没说话就松手 → 不要白白重排(bug:空语音也跑去 loading)。给个轻提示。
                             if (regenerateAfterVoice && !spoke) {
                                 regenerateAfterVoice = false
-                                _uiState.update { it.copy(voiceHint = "没听清,再说一次?") }
+                                _uiState.update { it.copy(voiceHint = "没听清,再说一次？") }
                             }
                             finishVoiceSession()
                         }
@@ -283,7 +283,10 @@ class MorningViewModel(
             }
     }
 
-    /** N-04:确认时通知权限被拒 → 轻引导一次(不阻断确认本身)。 */
+    /**
+     * N-04/F-13:含 ★ 计划但通知权限被拒 → 弹门控,**先不确认**(不导航到执行屏),
+     * 由用户选「去设置」或「仍然继续」。修复旧版「设了 hint 又立刻 confirm 导航」的竞态。
+     */
     fun onNotifPermissionDenied() {
         _uiState.update { it.copy(notifHint = "想按时叫你做 ★ 的事,需要通知权限——可以去设置里打开。") }
     }
@@ -292,9 +295,16 @@ class MorningViewModel(
         _uiState.update { it.copy(notifHint = null) }
     }
 
+    /** F-13:点「去设置」→ 真跳系统通知设置页(不确认、不导航);用户开完返回再点确认。 */
     fun openNotifSettings() {
-        reminderScheduler.openBackgroundSettings()
+        reminderScheduler.openNotificationSettings()
         dismissNotifHint()
+    }
+
+    /** 门控里点「仍然继续」→ 关门控并照常确认(权限是尽力而为,不阻断)。 */
+    fun confirmAnyway() {
+        dismissNotifHint()
+        confirmPlan()
     }
 
     /** N-04:本次确认的计划里是否有 ★ 任务(有才值得先要通知权限)。 */
@@ -428,6 +438,10 @@ class MorningViewModel(
 
     private fun Throwable.friendlyMessage(action: String = "generate"): String {
         val raw = message.orEmpty()
+        if (raw.contains("NEEDS_CLARIFICATION", ignoreCase = true)) {
+            Regex(""""message"\s*:\s*"((?:\\.|[^"\\])*)"""").find(raw)?.groupValues?.get(1)
+                ?.let { return it.replace("\\\"", "\"").replace("\\\\", "\\") }
+        }
         return when {
             raw.contains("Unable to resolve host", ignoreCase = true) -> "现在好像连不上网。等网络回来,我再帮你排今天。"
             raw.contains("timeout", ignoreCase = true) -> "这次等得有点久。可以再试一次。"
