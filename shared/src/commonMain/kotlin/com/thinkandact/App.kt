@@ -106,6 +106,8 @@ fun App() {
                     onOpenRoutines = { navTo(Screen.Routines) },
                     onOpenExecution = { navTo(Screen.Execution) },
                     onOpenHistory = { navTo(Screen.History) },
+                    // 确认计划后:重置返回栈为 [今天],morning 不再可回(调整在今天/完整计划页做)。
+                    onPlanConfirmed = { backStack.clear(); backStack.add(Screen.Execution) },
                 )
                 Screen.Routines -> RoutineScreen(onBack = { goBack() })
                 Screen.Execution -> ExecutionScreen(

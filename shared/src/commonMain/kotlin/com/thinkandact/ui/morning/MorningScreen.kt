@@ -86,16 +86,18 @@ fun MorningScreen(
     onOpenRoutines: () -> Unit,
     onOpenExecution: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    /** 确认计划后进入「今天」——与顶部「今天→」peek 区分:确认后 morning 不再留在返回栈(确认完无需再回)。 */
+    onPlanConfirmed: () -> Unit = onOpenExecution,
     viewModel: MorningViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     var editingTimeTask by remember { mutableStateOf<EditablePlanTask?>(null) }
     var showAddTask by remember { mutableStateOf(false) }
 
-    // 确认计划后直接进「今天」(bug:原来停在一个无意义的"已确认"页)。
+    // 确认计划后直接进「今天」(bug:原来停在一个无意义的"已确认"页);morning 退出返回栈。
     LaunchedEffect(state.isConfirmed) {
         if (state.isConfirmed) {
-            onOpenExecution()
+            onPlanConfirmed()
             viewModel.clearAfterConfirm()
         }
     }
