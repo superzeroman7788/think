@@ -158,6 +158,22 @@ class PlanRepository(
 
     private fun normalizeTitle(title: String): String = title.trim().lowercase()
 
+    /** 今天是否已确认过计划(有非软建议的真任务)——冷启动据此直达「今天」,而不是空的早上页。 */
+    suspend fun hasTodayPlan(): Boolean {
+        val session = ensureSession()
+        val userId = session.userId?.takeIf { it.isNotBlank() } ?: return false
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val response = httpClient.get(
+            "${SupabaseConfig.URL}/rest/v1/tasks" +
+                "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null&status=neq.suggested&select=id&limit=1"
+        ) {
+            supabaseHeaders(session.accessToken)
+            accept(ContentType.Application.Json)
+        }
+        if (!response.status.isSuccess()) return false
+        return response.bodyAsText().trim().let { it.isNotBlank() && it != "[]" }
+    }
+
     /** BUG-02：今天是否已有执行记录(done/skipped)——重确认前据此强提醒,避免误覆盖白天进度。 */
     suspend fun hasExecutedTasksToday(): Boolean {
         val session = ensureSession()

@@ -1,5 +1,6 @@
 package com.thinkandact
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import com.thinkandact.ui.reminders.TaskReminderBanner
 import com.thinkandact.ui.review.ReviewScreen
 import com.thinkandact.ui.routine.RoutineScreen
 import com.thinkandact.ui.theme.ThinkAndActTheme
+import com.thinkandact.ui.theme.TnaColors
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -59,10 +61,24 @@ fun App() {
             return@ThinkAndActTheme
         }
 
-        var currentScreen by remember { mutableStateOf<Screen>(Screen.Morning) }
+        // 冷启动落页:今天已确认过计划 → 直达「今天」(执行屏);没有 → 早上规划页。
+        // 解析前(null)显空背景,避免先闪一下 Morning 再跳。失败兜底 Morning。
+        val planRepository = koinInject<com.thinkandact.data.PlanRepository>()
+        var currentScreen by remember { mutableStateOf<Screen?>(null) }
+        LaunchedEffect(Unit) {
+            if (currentScreen == null) {
+                val hasPlan = runCatching { planRepository.hasTodayPlan() }.getOrDefault(false)
+                if (currentScreen == null) currentScreen = if (hasPlan) Screen.Execution else Screen.Morning
+            }
+        }
+        val screen = currentScreen
+        if (screen == null) {
+            Box(modifier = Modifier.fillMaxSize().background(TnaColors.Background))
+            return@ThinkAndActTheme
+        }
         // BUG-01：系统返回键/右滑 → 逐屏返回,而不是退 App。Morning 时不拦(默认退出)。
-        AppBackHandler(enabled = currentScreen != Screen.Morning) {
-            currentScreen = when (currentScreen) {
+        AppBackHandler(enabled = screen != Screen.Morning) {
+            currentScreen = when (screen) {
                 Screen.Review, Screen.FullPlan, Screen.Inbox -> Screen.Execution
                 else -> Screen.Morning
             }
@@ -85,7 +101,7 @@ fun App() {
         val activeReminder by reminders.active.collectAsState()
 
         Box(modifier = Modifier.fillMaxSize()) {
-            when (currentScreen) {
+            when (screen) {
                 Screen.Morning -> MorningScreen(
                     onOpenRoutines = { currentScreen = Screen.Routines },
                     onOpenExecution = { currentScreen = Screen.Execution },
