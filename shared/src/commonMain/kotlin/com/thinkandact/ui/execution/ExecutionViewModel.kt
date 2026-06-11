@@ -403,6 +403,7 @@ class ExecutionViewModel(
                 plannedStart = it.plannedStart,
                 plannedDuration = it.plannedDuration,
                 important = it.important,
+                kind = it.kind,
             )
         }
         if (applyList.isEmpty() && addedList.isEmpty()) { _uiState.update { it.copy(proposal = null) }; return }

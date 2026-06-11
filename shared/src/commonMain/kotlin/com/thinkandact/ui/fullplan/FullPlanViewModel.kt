@@ -164,7 +164,7 @@ class FullPlanViewModel(
                 else -> null
             }
         }
-        val addedList = p.added.map { ApplyAddedReviseDto(it.clientKey, it.title, it.plannedStart, it.plannedDuration, it.important) }
+        val addedList = p.added.map { ApplyAddedReviseDto(it.clientKey, it.title, it.plannedStart, it.plannedDuration, it.important, it.kind) }
         if (applyList.isEmpty() && addedList.isEmpty()) { _uiState.update { it.copy(proposal = null) }; return }
         _uiState.update { it.copy(isApplying = true) }
         viewModelScope.launch {

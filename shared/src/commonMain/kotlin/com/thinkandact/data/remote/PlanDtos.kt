@@ -197,6 +197,8 @@ data class ReviseTaskDto(
     val status: String = "planned",
     /** 必填键（可 null）：已开始任务 BE 不得 output moved。 */
     @SerialName("actual_start") val actualStart: String? = null,
+    /** 时刻点:block(默认) | point。BE 据此 enforce「只挪/删 point 时 block 强制 unchanged」。 */
+    val kind: String = "block",
 )
 
 @Serializable
@@ -206,6 +208,8 @@ data class AddedReviseDto(
     @SerialName("planned_start") val plannedStart: String? = null,
     @SerialName("planned_duration") val plannedDuration: Int? = null,
     val important: Boolean = false,
+    /** 重排可新增时刻点:block(默认) | point(planned_duration=0)。 */
+    val kind: String = "block",
 )
 
 @Serializable
@@ -257,6 +261,8 @@ data class ApplyAddedReviseDto(
     @SerialName("planned_start") val plannedStart: String? = null,
     @SerialName("planned_duration") val plannedDuration: Int? = null,
     val important: Boolean = false,
+    /** apply RPC 写入 kind;point 的 planned_duration 由 BE 固定 0。 */
+    val kind: String = "block",
 )
 
 @Serializable

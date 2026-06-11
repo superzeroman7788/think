@@ -292,6 +292,7 @@ class PlanRepository(
                             id = it.id, title = it.title, plannedStart = it.plannedStart,
                             plannedDuration = it.plannedDuration, important = it.important,
                             status = it.status, actualStart = it.actualStart,
+                            kind = it.kind, // BE 据此 enforce 块边界不因钉子变化
                         )
                     },
                 )
