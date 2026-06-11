@@ -31,8 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
@@ -100,12 +103,34 @@ fun FullPlanScreen(
                     state.isLoading -> { Spacer(Modifier.height(30.dp)); Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(16.dp), color = TnaColors.AccentDeep, strokeWidth = 2.dp); Text("  在看今天…", style = TnaTypography.Body.copy(color = TnaColors.InkSoft)) } }
                     state.tasks.isEmpty() -> { Spacer(Modifier.height(40.dp)); Text("今天还没有安排。先去早上排一下吧。", style = TnaTypography.BodySoft) }
                     else -> {
-                        // 现在线插在「已开始的最后一条」之后。
-                        val started = state.tasks.filter { it.status != "suggested" && startSec(it)?.let { s -> s <= nowSec } == true }
-                        val nowAfterId = started.lastOrNull()?.id
-                        state.tasks.forEach { task ->
-                            val st = rowState(task, nowSec)
-                            PlanRow(task = task, state = st, rem = remText(task, nowSec, st), onClick = { if (st == RowState.Suggestion) viewModel.acceptSuggestion(task.id) else editTask = task })
+                        // 时刻点(钉子):把 point 归到所在 block(优先 anchor_task_id,否则按时间落在块范围内),
+                        // 块永远完整一条,钉子渲染在块卡片内部下方;不落任何块的 point 独立成细钉子行。
+                        val points = state.tasks.filter { it.isPoint }
+                        val blocks = state.tasks.filter { !it.isPoint }
+                        val nestedByBlock = HashMap<String, MutableList<TaskRowDto>>()
+                        val standalonePoints = mutableListOf<TaskRowDto>()
+                        points.forEach { p ->
+                            val host = blocks.firstOrNull { b -> p.anchorTaskId != null && b.id == p.anchorTaskId }
+                                ?: blocks.firstOrNull { b -> pointInBlock(p, b) }
+                            if (host != null) nestedByBlock.getOrPut(host.id) { mutableListOf() }.add(p)
+                            else standalonePoints.add(p)
+                        }
+                        // 渲染序列:块 + 独立钉子,按起点时间合并升序。
+                        val sequence = (blocks + standalonePoints).sortedBy { startSec(it) ?: Long.MAX_VALUE }
+                        // 现在线插在「已开始的最后一条(块或独立钉子)」之后。
+                        val nowAfterId = sequence.filter { it.status != "suggested" && startSec(it)?.let { s -> s <= nowSec } == true }.lastOrNull()?.id
+                        sequence.forEach { task ->
+                            if (task.isPoint) {
+                                PointRow(task, rowState(task, nowSec), onClick = { editTask = task })
+                            } else {
+                                val st = rowState(task, nowSec)
+                                PlanRow(
+                                    task = task, state = st, rem = remText(task, nowSec, st),
+                                    nestedPoints = nestedByBlock[task.id].orEmpty(),
+                                    onClick = { if (st == RowState.Suggestion) viewModel.acceptSuggestion(task.id) else editTask = task },
+                                    onPointClick = { editTask = it },
+                                )
+                            }
                             if (task.id == nowAfterId) NowLine(nowSec)
                         }
                     }
@@ -154,7 +179,14 @@ fun FullPlanScreen(
 }
 
 @Composable
-private fun PlanRow(task: TaskRowDto, state: RowState, rem: String?, onClick: () -> Unit) {
+private fun PlanRow(
+    task: TaskRowDto,
+    state: RowState,
+    rem: String?,
+    onClick: () -> Unit,
+    nestedPoints: List<TaskRowDto> = emptyList(),
+    onPointClick: (TaskRowDto) -> Unit = {},
+) {
     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp), verticalAlignment = Alignment.Top) {
         Text(task.plannedStart.hhmm(), modifier = Modifier.width(44.dp).padding(top = 13.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         val bg = when (state) {
@@ -181,6 +213,65 @@ private fun PlanRow(task: TaskRowDto, state: RowState, rem: String?, onClick: ()
                 }
             }
             rem?.let { Text(it, modifier = Modifier.padding(top = 4.dp), style = TnaTypography.Mono.copy(color = if (state == RowState.Current) NowTerra else TnaColors.Muted)) }
+            // 钉子区:块卡片内部下方,虚线分隔;块本身不被切开。
+            if (nestedPoints.isNotEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp).height(1.dp)
+                    .drawBehind { drawLine(Color(0xFFE3D3C4), androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 5f))) })
+                nestedPoints.forEach { p -> NestedPointRow(p, onClick = { onPointClick(p) }) }
+            }
+        }
+    }
+}
+
+/** 块内钉子行:`● 15:00 给老张打电话`;done → 灰点 + 删除线。 */
+@Composable
+private fun NestedPointRow(p: TaskRowDto, onClick: () -> Unit) {
+    val done = p.status == "done"
+    val skipped = p.status == "skipped"
+    val dim = done || skipped
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("●", style = TnaTypography.Mono.copy(color = if (dim) TnaColors.Muted else if (p.important) TnaColors.Accent else NowTerra))
+        Text(p.plannedStart.hhmm(), modifier = Modifier.padding(start = 6.dp).width(40.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        Text(
+            (if (p.important) "★ " else "") + p.title,
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
+            style = TnaTypography.Body.copy(
+                color = if (dim) TnaColors.Muted else TnaColors.Ink,
+                textDecoration = if (dim) TextDecoration.LineThrough else null,
+            ),
+        )
+        if (done) Text("完成", style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+        else if (skipped) Text("跳过", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+    }
+}
+
+/** 不落任何块的独立钉子行(整屏一条细行)。 */
+@Composable
+private fun PointRow(p: TaskRowDto, state: RowState, onClick: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(p.plannedStart.hhmm(), modifier = Modifier.width(44.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        val done = p.status == "done"; val skipped = p.status == "skipped"; val dim = done || skipped
+        Row(
+            modifier = Modifier.weight(1f)
+                .background(TnaColors.Surface, RoundedCornerShape(12.dp))
+                .border(1.dp, TnaColors.Line, RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("●", style = TnaTypography.Mono.copy(color = if (dim) TnaColors.Muted else if (p.important) TnaColors.Accent else NowTerra))
+            Text(
+                (if (p.important) "★ " else "") + p.title,
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                style = TnaTypography.Body.copy(
+                    color = if (dim) TnaColors.Muted else TnaColors.Ink,
+                    textDecoration = if (dim) TextDecoration.LineThrough else null,
+                ),
+            )
+            if (done) Text("完成", style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+            else if (skipped) Text("跳过", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         }
     }
 }
@@ -267,6 +358,14 @@ private fun DiffRow(name: String, detail: String, accent: Boolean = false) {
 // ── 状态/还剩 计算（时钟制、不重置、不显负数）──────────────────────────
 private fun startSec(t: TaskRowDto): Long? = t.plannedStart?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }
 private fun endSec(t: TaskRowDto): Long? = startSec(t)?.let { it + (t.plannedDuration ?: 30) * 60L }
+
+/** point 是否落在 block 的时间范围 [start, end) 内(钉子归位的时间兜底,anchor 缺失时用)。 */
+private fun pointInBlock(p: TaskRowDto, b: TaskRowDto): Boolean {
+    val ps = startSec(p) ?: return false
+    val bs = startSec(b) ?: return false
+    val be = endSec(b) ?: return false
+    return ps in bs until be
+}
 
 private fun rowState(t: TaskRowDto, nowSec: Long): RowState {
     if (t.status == "suggested") return RowState.Suggestion

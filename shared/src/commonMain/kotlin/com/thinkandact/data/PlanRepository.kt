@@ -37,7 +37,9 @@ import io.ktor.http.contentType
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.isSuccess
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
 class PlanRepository(
@@ -91,14 +93,30 @@ class PlanRepository(
         softDeleteTodayTasks(session, userId, today)
         if (deduped.isEmpty()) return emptyList()
 
-        val rows = deduped.map { task ->
-            task.toInsertDto(
-                userId = userId,
-                date = today,
-                fallbackSource = "proposal"
-            )
-        }
+        // 时刻点(钉子):两段式落库——先插 block 拿到库 id,再按 HH:MM 把 point 锚到所在 block。
+        // 无 block(纯钉子日)或锚不上 → anchor_task_id 留 null,渲染时按时间归位,不阻断。
+        val blocks = deduped.filter { it.kind != "point" }
+        val points = deduped.filter { it.kind == "point" }
 
+        val blockRows = if (blocks.isEmpty()) emptyList() else insertTasks(
+            session, blocks.map { it.toInsertDto(userId, today, "proposal") }
+        )
+        if (points.isEmpty()) return blockRows
+
+        val blockIdByHhmm = blockRows.associateBy({ hhmmOf(it.plannedStart) }, { it.id })
+        val pointRows = insertTasks(
+            session,
+            points.map { p ->
+                p.toInsertDto(
+                    userId = userId, date = today, fallbackSource = "proposal",
+                    anchorTaskId = p.anchorBlockStart?.let { blockIdByHhmm[hhmmOf(it)] },
+                )
+            },
+        )
+        return blockRows + pointRows
+    }
+
+    private suspend fun insertTasks(session: SupabaseSession, rows: List<TaskInsertDto>): List<TaskRowDto> {
         val insert = httpClient.post("${SupabaseConfig.URL}/rest/v1/tasks") {
             supabaseHeaders(session.accessToken)
             header("Prefer", "return=representation")
@@ -109,6 +127,16 @@ class PlanRepository(
             throw IllegalStateException(insert.bodyAsText().ifBlank { "Task insert failed." })
         }
         return insert.body()
+    }
+
+    /** 取 planned_start 的 HH:MM(兼容 ISO 与裸 HH:MM),用于把 point 锚到同时刻起点的 block。 */
+    private fun hhmmOf(s: String?): String {
+        if (s.isNullOrBlank()) return ""
+        if (Regex("^\\d{2}:\\d{2}").containsMatchIn(s.trim())) return s.trim().take(5)
+        return runCatching {
+            kotlinx.datetime.Instant.parse(s).toLocalDateTime(TimeZone.currentSystemDefault())
+                .let { "${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}" }
+        }.getOrDefault("")
     }
 
     /** N-05:当天已执行(done/skipped)任务的归一化标题集合。查询失败放行(空集合),不阻断确认。 */
@@ -158,7 +186,7 @@ class PlanRepository(
         val response = httpClient.get(
             "${SupabaseConfig.URL}/rest/v1/tasks" +
                 "?user_id=eq.$userId&date=eq.$today&deleted_at=is.null$suggestedFilter" +
-                "&select=id,title,note,planned_start,planned_duration,important,status,actual_start,actual_end,task_type,time_of_day" +
+                "&select=id,title,note,planned_start,planned_duration,important,status,actual_start,actual_end,task_type,time_of_day,kind,anchor_task_id" +
                 "&order=planned_start.asc.nullslast"
         ) {
             supabaseHeaders(session.accessToken)
@@ -411,18 +439,22 @@ private fun PlanTaskDto.toInsertDto(
     userId: String,
     date: String,
     fallbackSource: String,
-    forceSuggestion: Boolean = false
+    forceSuggestion: Boolean = false,
+    anchorTaskId: String? = null,
 ): TaskInsertDto = TaskInsertDto(
     userId = userId,
     date = date,
     title = title,
     note = note?.takeIf { it.isNotBlank() },
     plannedStart = plannedStart,
-    plannedDuration = plannedDuration,
+    // 时刻点不占时长:point 强制 duration=0(满足 DB 约束);block 照旧。
+    plannedDuration = if (kind == "point") 0 else plannedDuration,
     important = important,
     taskType = taskType,
     timeOfDay = timeOfDay,
     source = if (forceSuggestion) "ai_suggestion" else source?.takeIf { it.isNotBlank() } ?: fallbackSource,
     // v1.4：原样写入 status(软建议 = suggested),禁止把 suggestion 当 planned 插入。
     status = if (forceSuggestion) "suggested" else this.status,
+    kind = kind,
+    anchorTaskId = anchorTaskId,
 )

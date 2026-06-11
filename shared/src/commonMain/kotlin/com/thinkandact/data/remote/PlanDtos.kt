@@ -77,6 +77,10 @@ data class PlanTaskDto(
     val source: String? = null,
     /** v1.4 软建议：plan-generate 的 suggestion_tasks 带 "suggested"；tasks 带 "planned"。落库原样写入。 */
     val status: String = "planned",
+    /** 时刻点(钉子)：kind=block(时间块,默认) | point(时刻点,duration=0)。 */
+    val kind: String = "block",
+    /** 提案阶段:point 锚定 block 的 planned_start(HH:MM);FE 落库时解析为 anchor_task_id。 */
+    @SerialName("anchor_block_start") val anchorBlockStart: String? = null,
 )
 
 @Serializable
@@ -91,7 +95,10 @@ data class TaskInsertDto(
     @SerialName("task_type") val taskType: String? = null,
     @SerialName("time_of_day") val timeOfDay: String? = null,
     val source: String,
-    val status: String = "planned"
+    val status: String = "planned",
+    /** 时刻点:block(默认) | point。point 落库 planned_duration=0。 */
+    val kind: String = "block",
+    @SerialName("anchor_task_id") val anchorTaskId: String? = null,
 )
 
 @Serializable
@@ -125,7 +132,12 @@ data class TaskRowDto(
     @SerialName("was_rescheduled") val wasRescheduled: Boolean = false,
     val source: String? = null,
     @SerialName("reschedule_count") val rescheduleCount: Int = 0,
-)
+    /** 时刻点:block(默认) | point。 */
+    val kind: String = "block",
+    @SerialName("anchor_task_id") val anchorTaskId: String? = null,
+) {
+    val isPoint: Boolean get() = kind == "point"
+}
 
 /** 完成回写：status=done + 实际起止（块一，采结构化数据）。 */
 @Serializable

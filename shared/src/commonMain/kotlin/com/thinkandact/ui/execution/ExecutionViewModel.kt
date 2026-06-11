@@ -75,6 +75,11 @@ class ExecutionViewModel(
      */
     private val displayStartedAt = mutableMapOf<String, Long>()
 
+    // 时刻点横幅(§二):已处理(完成/二次待会儿)的 point 不再弹;待会儿一次 → 10 分钟后重弹一次。
+    private val handledPoints = mutableSetOf<String>()
+    private val snoozedOncePoints = mutableSetOf<String>()
+    private val snoozeUntil = mutableMapOf<String, Long>()
+
     init {
         load()
         startTideTicker()
@@ -90,6 +95,7 @@ class ExecutionViewModel(
                     _uiState.update { it.copy(isLoading = false, tasks = tasks, currentTaskId = current?.id, errorMessage = null) }
                     ensureCurrentStarted()
                     recomputeTide()
+                    checkPoints() // §二 时刻点横幅
                     syncReminders() // ★ 任务到点系统提醒
                     refreshInboxBadge() // 收件箱角标
                     // §2 接缓存：进执行屏即预取 ASR 会话（不计配额），让「想调整今天」首次按麦 preflight≈0。
@@ -160,6 +166,7 @@ class ExecutionViewModel(
                     load() // 重拉新一天的任务(load 内部按当天日期取数)
                 }
                 if (!uiState.value.isCompleting) recomputeTide()
+                checkPoints() // §二 每 30s 检查到点的时刻点
                 delay(30_000)
             }
         }
@@ -230,8 +237,9 @@ class ExecutionViewModel(
         uiState.value.tasks.firstOrNull { it.id == uiState.value.currentTaskId }
 
     private fun pickCurrent(tasks: List<TaskRowDto>): TaskRowDto? {
+        // 时刻点(钉子)不参与「当前块」选择——它只弹横幅、不打断手头的块。
         // 按计划时间升序（无时间排最后），保证"最早一条"语义稳定。
-        val planned = tasks.filter { it.status == STATUS_PLANNED }
+        val planned = tasks.filter { it.status == STATUS_PLANNED && !it.isPoint }
             .sortedBy { it.plannedStart?.let { s -> runCatching { Instant.parse(s).epochSeconds }.getOrNull() } ?: Long.MAX_VALUE }
         if (planned.isEmpty()) return null
         val now = Clock.System.now()
@@ -479,8 +487,54 @@ class ExecutionViewModel(
         }
     }
 
+    // ── 时刻点横幅(§二)──────────────────────────────────────────────
+    /** 每个 tick / load 后检查:有到点(planned_start ≤ now)且未处理/未在待会儿窗口内的 point → 弹横幅。 */
+    private fun checkPoints() {
+        if (uiState.value.activePoint != null) return
+        val now = Clock.System.now()
+        val nowMs = now.toEpochMilliseconds()
+        val due = uiState.value.tasks
+            .filter { it.isPoint && it.status == STATUS_PLANNED && it.id !in handledPoints }
+            .filter { p ->
+                val start = p.plannedStart?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                start != null && start <= now
+            }
+            .filter { (snoozeUntil[it.id] ?: 0L) <= nowMs }
+            .minByOrNull { it.plannedStart?.let { s -> runCatching { Instant.parse(s).epochSeconds }.getOrNull() } ?: Long.MAX_VALUE }
+        if (due != null) _uiState.update { it.copy(activePoint = due) }
+    }
+
+    /** 横幅「完成」→ point 置 done,收起;手头的块从未切换。 */
+    fun completePoint(id: String) {
+        val now = Clock.System.now().toString()
+        handledPoints.add(id)
+        _uiState.update { it.copy(activePoint = null) }
+        viewModelScope.launch {
+            runCatching { planRepository.markTaskDone(id, actualEnd = now) }
+                .onSuccess { load() } // 刷新:钉子区显示 done + 进度计入
+                .onFailure {
+                    handledPoints.remove(id)
+                    _uiState.update { it.copy(errorMessage = "刚那一下没存上,再点一次就好。") }
+                }
+        }
+        checkPoints() // 可能还有下一条到点的钉子
+    }
+
+    /** 横幅「待会儿」→ 收起;第一次 10 分钟后重弹一次,第二次起不再弹(回计划页钉子区,不纠缠)。 */
+    fun snoozePoint(id: String) {
+        _uiState.update { it.copy(activePoint = null) }
+        if (id in snoozedOncePoints) {
+            handledPoints.add(id) // 已待会儿过一次 → 不再弹
+        } else {
+            snoozedOncePoints.add(id)
+            snoozeUntil[id] = Clock.System.now().toEpochMilliseconds() + SNOOZE_MS
+        }
+        checkPoints()
+    }
+
     private companion object {
         const val STATUS_PLANNED = "planned"
+        const val SNOOZE_MS = 10 * 60 * 1000L
     }
 }
 
@@ -507,6 +561,8 @@ data class ExecutionUiState(
     val remNear: Boolean = false,
     val isCompleting: Boolean = false,
     val inboxBadge: Int = 0,
+    /** §二 时刻点横幅:到点弹出的钉子(完成/待会儿);块不切换。 */
+    val activePoint: TaskRowDto? = null,
 ) {
     val currentTask: TaskRowDto? get() = tasks.firstOrNull { it.id == currentTaskId }
     /** 进度 = 已处理(完成 + 跳过 + 不做了)/ 总数。 */

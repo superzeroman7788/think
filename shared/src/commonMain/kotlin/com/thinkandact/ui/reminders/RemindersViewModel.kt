@@ -43,6 +43,7 @@ class RemindersViewModel(
                 if (_active.value == null) {
                     val due = tasks.firstOrNull { t ->
                         !t.important &&
+                            !t.isPoint && // 时刻点由执行屏专属横幅(完成/待会儿)处理,不走这条通用横幅
                             t.status == STATUS_PLANNED &&
                             t.id !in reminded &&
                             t.plannedStart.crossed(lastTick, now)

@@ -214,6 +214,17 @@ fun ExecutionScreen(
             }
         }
 
+        // §二 时刻点横幅:到点弹在顶部,块不中断。完成 / 待会儿。
+        state.activePoint?.let { p ->
+            PointBanner(
+                point = p,
+                currentTitle = cur?.title,
+                onDone = { viewModel.completePoint(p.id) },
+                onLater = { viewModel.snoozePoint(p.id) },
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
+            )
+        }
+
         // 即时反馈覆盖层(就地盖住「想调整」语音条,不抢已在进行的按住手势)。
         PressFeedbackOverlay(visible = fbVisible, amp = amp, cancelArmed = fbArmed, anchorCenterYpx = barCenterY)
 
@@ -237,6 +248,51 @@ fun ExecutionScreen(
             onApply = viewModel::applyProposal,
         )
     }
+}
+
+/** §二 时刻点横幅:事项 + 时刻 + 完成/待会儿 + 「手头的『XX』不中断」小字。 */
+@Composable
+private fun PointBanner(
+    point: TaskRowDto,
+    currentTitle: String?,
+    onDone: () -> Unit,
+    onLater: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .background(Brush.verticalGradient(listOf(Color(0xFFFBEFE0), Color(0xFFF6E2CE))), RoundedCornerShape(16.dp))
+            .border(1.dp, Color(0xFFE6C5AC), RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("● ${point.plannedStart.hhmmBanner()}", style = TnaTypography.Mono.copy(color = NowTerraBanner, fontWeight = FontWeight.Bold))
+            Text(
+                (if (point.important) "  ★ " else "  ") + point.title,
+                modifier = Modifier.weight(1f),
+                style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.SemiBold),
+            )
+        }
+        currentTitle?.takeIf { it.isNotBlank() }?.let {
+            Text("手头的「$it」不中断,做完这件继续", modifier = Modifier.padding(top = 4.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TnaButton("待会儿", onClick = onLater, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
+            TnaButton("完成", onClick = onDone, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+private val NowTerraBanner = Color(0xFFB5654A)
+
+private fun String?.hhmmBanner(): String {
+    if (this.isNullOrBlank()) return "--:--"
+    if (Regex("^\\d{2}:\\d{2}").containsMatchIn(this.trim())) return this.trim().take(5)
+    val i = runCatching { kotlinx.datetime.Instant.parse(this) }.getOrNull() ?: return "--:--"
+    val lt = i.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+    return "${lt.hour.toString().padStart(2, '0')}:${lt.minute.toString().padStart(2, '0')}"
 }
 
 @Composable
