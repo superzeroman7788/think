@@ -87,6 +87,8 @@ fun ExecutionScreen(
     onOpenReview: () -> Unit = {},
     onOpenFullPlan: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
+    /** 「今天」是冷启动落地的首页时为 false → 不显示返回 morning 的 ← (它是 home,没有上一页)。 */
+    showBack: Boolean = true,
     viewModel: ExecutionViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -151,7 +153,7 @@ fun ExecutionScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            ExecutionHeader(progress = state.progressCount, total = state.totalCount, onBack = onBack, onOpenReview = onOpenReview, onOpenFullPlan = onOpenFullPlan, onOpenInbox = onOpenInbox, inboxBadge = state.inboxBadge)
+            ExecutionHeader(progress = state.progressCount, total = state.totalCount, onBack = onBack, showBack = showBack, onOpenReview = onOpenReview, onOpenFullPlan = onOpenFullPlan, onOpenInbox = onOpenInbox, inboxBadge = state.inboxBadge)
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
@@ -296,20 +298,23 @@ private fun String?.hhmmBanner(): String {
 }
 
 @Composable
-private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, onOpenReview: () -> Unit, onOpenFullPlan: () -> Unit = {}, onOpenInbox: () -> Unit = {}, inboxBadge: Int = 0) {
+private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, showBack: Boolean = true, onOpenReview: () -> Unit, onOpenFullPlan: () -> Unit = {}, onOpenInbox: () -> Unit = {}, inboxBadge: Int = 0) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
-                .clickable(onClick = onBack)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-        ) {
-            Text(text = "←", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
+        // 「今天」作为冷启动首页时不显示 ← (无上一页,避免误退回早上规划页)。
+        if (showBack) {
+            Box(
+                modifier = Modifier
+                    .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
+                    .clickable(onClick = onBack)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(text = "←", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
+            }
         }
-        Text(text = "今天", modifier = Modifier.padding(start = 12.dp).weight(1f), style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
+        Text(text = "今天", modifier = Modifier.padding(start = if (showBack) 12.dp else 0.dp).weight(1f), style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
         // 收件箱入口 + 角标(§六:count=pending 且 due≤今天;0 不显示)。
         Box(modifier = Modifier.padding(end = 8.dp)) {
             Box(

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,39 +62,38 @@ fun App() {
             return@ThinkAndActTheme
         }
 
-        // 冷启动落页:今天已确认过计划 → 直达「今天」(执行屏);没有 → 早上规划页。
-        // 解析前(null)显空背景,避免先闪一下 Morning 再跳。失败兜底 Morning。
+        // 冷启动落页 + 返回栈:今天已确认过计划 → 直达「今天」(它即首页,无 ← 退回 morning);
+        // 没有 → 早上规划页。返回键/← 走真实返回栈:栈底(首页)按返回 → 退出 App,而不是跳 morning。
         val planRepository = koinInject<com.thinkandact.data.PlanRepository>()
-        var currentScreen by remember { mutableStateOf<Screen?>(null) }
+        val backStack = remember { mutableStateListOf<Screen>() }
         LaunchedEffect(Unit) {
-            if (currentScreen == null) {
+            if (backStack.isEmpty()) {
                 val hasPlan = runCatching { planRepository.hasTodayPlan() }.getOrDefault(false)
-                if (currentScreen == null) currentScreen = if (hasPlan) Screen.Execution else Screen.Morning
+                if (backStack.isEmpty()) backStack.add(if (hasPlan) Screen.Execution else Screen.Morning)
             }
         }
-        val screen = currentScreen
+        val screen = backStack.lastOrNull()
         if (screen == null) {
             Box(modifier = Modifier.fillMaxSize().background(TnaColors.Background))
             return@ThinkAndActTheme
         }
-        // BUG-01：系统返回键/右滑 → 逐屏返回,而不是退 App。Morning 时不拦(默认退出)。
-        AppBackHandler(enabled = screen != Screen.Morning) {
-            currentScreen = when (screen) {
-                Screen.Review, Screen.FullPlan, Screen.Inbox -> Screen.Execution
-                else -> Screen.Morning
-            }
-        }
-        // BUG-05：回前台时若已跨午夜 → 回到 Morning(重算 today、拉新一天),避免还显示昨天的任务。
+        fun navTo(s: Screen) { if (backStack.lastOrNull() != s) backStack.add(s) }
+        fun goBack() { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
+
+        // BUG-01：系统返回键 → 弹返回栈;栈底(首页)不拦 → 默认退出 App。
+        AppBackHandler(enabled = backStack.size > 1) { goBack() }
+
+        // BUG-05：回前台跨午夜 → 重置到 Morning(新一天重新规划),清空旧栈。
         var lastDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            if (today != lastDate) { lastDate = today; currentScreen = Screen.Morning }
+            if (today != lastDate) { lastDate = today; backStack.clear(); backStack.add(Screen.Morning) }
         }
-        // 第四批 N-03:点 ★ 提醒通知 → MainActivity 置位 → 直达执行屏(消费后复位)。
+        // 第四批 N-03:点 ★ 提醒通知 → 直达执行屏(消费后复位)。
         val openExecution by com.thinkandact.ui.NavSignals.openExecution.collectAsState()
         LaunchedEffect(openExecution) {
             if (openExecution) {
-                currentScreen = Screen.Execution
+                navTo(Screen.Execution)
                 com.thinkandact.ui.NavSignals.openExecution.value = false
             }
         }
@@ -103,28 +103,29 @@ fun App() {
         Box(modifier = Modifier.fillMaxSize()) {
             when (screen) {
                 Screen.Morning -> MorningScreen(
-                    onOpenRoutines = { currentScreen = Screen.Routines },
-                    onOpenExecution = { currentScreen = Screen.Execution },
-                    onOpenHistory = { currentScreen = Screen.History },
+                    onOpenRoutines = { navTo(Screen.Routines) },
+                    onOpenExecution = { navTo(Screen.Execution) },
+                    onOpenHistory = { navTo(Screen.History) },
                 )
-                Screen.Routines -> RoutineScreen(onBack = { currentScreen = Screen.Morning })
+                Screen.Routines -> RoutineScreen(onBack = { goBack() })
                 Screen.Execution -> ExecutionScreen(
-                    onBack = { currentScreen = Screen.Morning },
-                    onOpenReview = { currentScreen = Screen.Review },
-                    onOpenFullPlan = { currentScreen = Screen.FullPlan },
-                    onOpenInbox = { currentScreen = Screen.Inbox },
+                    onBack = { goBack() },
+                    showBack = backStack.size > 1, // 冷启动落「今天」=栈底 → 不显示 ←
+                    onOpenReview = { navTo(Screen.Review) },
+                    onOpenFullPlan = { navTo(Screen.FullPlan) },
+                    onOpenInbox = { navTo(Screen.Inbox) },
                 )
-                Screen.Review -> ReviewScreen(onBack = { currentScreen = Screen.Execution })
-                Screen.History -> HistoryScreen(onBack = { currentScreen = Screen.Morning })
-                Screen.FullPlan -> FullPlanScreen(onBack = { currentScreen = Screen.Execution })
-                Screen.Inbox -> com.thinkandact.ui.inbox.InboxScreen(onBack = { currentScreen = Screen.Execution })
+                Screen.Review -> ReviewScreen(onBack = { goBack() })
+                Screen.History -> HistoryScreen(onBack = { goBack() })
+                Screen.FullPlan -> FullPlanScreen(onBack = { goBack() })
+                Screen.Inbox -> com.thinkandact.ui.inbox.InboxScreen(onBack = { goBack() })
             }
 
             // 块三：普通任务到点的 App 内横幅,浮在当前屏顶部。
             activeReminder?.let { task ->
                 TaskReminderBanner(
                     task = task,
-                    onGo = { currentScreen = Screen.Execution; reminders.dismiss() },
+                    onGo = { navTo(Screen.Execution); reminders.dismiss() },
                     onDismiss = reminders::dismiss,
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
