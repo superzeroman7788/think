@@ -383,10 +383,10 @@ private fun PlanExistsGate(modifier: Modifier = Modifier, onGoToToday: () -> Uni
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("今天已经有计划了", style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
+        Text("你今天已经有计划了", style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            "想调整就去「今天」改一改,不用重新规划。",
+            "要直接去改今天吗？不用重新规划。",
             style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft),
             textAlign = TextAlign.Center,
         )
@@ -694,6 +694,10 @@ private fun MorningInput(value: String, onValueChange: (String) -> Unit, placeho
     if (value != tfv.text) {
         tfv = TextFieldValue(value, TextRange(value.length))
     }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(value) {
+        scrollState.animateScrollTo(scrollState.maxValue)
+    }
     BasicTextField(
         value = tfv,
         onValueChange = { next ->
@@ -704,12 +708,13 @@ private fun MorningInput(value: String, onValueChange: (String) -> Unit, placeho
         cursorBrush = SolidColor(TnaColors.Accent),
         modifier = modifier
             .fillMaxWidth()
+            .verticalScroll(scrollState)
             .shadow(elevation = 3.dp, shape = TnaShapes.Input, ambientColor = TnaColors.WarmShadow, spotColor = TnaColors.WarmShadow)
             .background(TnaColors.Surface, TnaShapes.Input)
             .border(1.dp, TnaColors.Line, TnaShapes.Input)
             .padding(horizontal = 15.dp, vertical = 14.dp),
         decorationBox = { innerTextField ->
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 if (value.isEmpty()) Text(text = placeholder, style = TnaTypography.Body.copy(color = TnaColors.Muted))
                 innerTextField()
             }

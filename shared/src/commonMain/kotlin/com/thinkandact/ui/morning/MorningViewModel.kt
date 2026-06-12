@@ -238,7 +238,11 @@ class MorningViewModel(
         val input = uiState.value.rawInput.trim()
         if (input.isEmpty()) return
         if (uiState.value.isLoading) return // BUG-06 防抖：生成中再点忽略,别双倍消耗 AI / 竞态覆盖
-
+        // B6-03 硬门:今天已有确认计划 → 禁止再生成(防 BUG-02/N-05 根场景)。
+        if (uiState.value.todayHasPlan) {
+            _uiState.update { it.copy(errorMessage = "今天已经有计划了,去「今天」改吧。") }
+            return
+        }
         generateJob?.cancel()
         generateJob = viewModelScope.launch {
             val thisJob = coroutineContext[Job]!!

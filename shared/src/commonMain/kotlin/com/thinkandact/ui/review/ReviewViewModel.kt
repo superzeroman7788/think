@@ -2,6 +2,7 @@ package com.thinkandact.ui.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.thinkandact.data.PlanRepository
 import com.thinkandact.data.ReviewRepository
 import com.thinkandact.data.ReviewStaleException
 import com.thinkandact.data.remote.ReviewAddedDto
@@ -16,6 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
 
 data class ReviewUiState(
     val isLoading: Boolean = true,
@@ -49,6 +53,7 @@ data class ReviewUiState(
 class ReviewViewModel(
     private val reviewRepository: ReviewRepository,
     private val voiceInputService: VoiceInputService,
+    private val planRepository: PlanRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReviewUiState())
@@ -87,18 +92,35 @@ class ReviewViewModel(
         }
     }
 
-    // ── ① 审核:三态循环(乐观 + 单行 PATCH)──────────────────────────────
+    /** B6-07:今天收尾前只读 —— 全部处理完 或 最后一项结束时间已过 → 解锁。 */
+    fun isReviewLockedFor(nowSec: Long, tasks: List<TaskRowDto>): Boolean {
+        if (tasks.isEmpty()) return false
+        val allHandled = tasks.all { it.status == "done" || it.status == "skipped" || it.status == "dropped" }
+        val lastEndSec = tasks.mapNotNull { t ->
+            t.plannedStart?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }
+                ?.let { start -> start + (t.plannedDuration ?: 0) * 60L }
+        }.maxOrNull()
+        val lastEndPassed = lastEndSec != null && nowSec >= lastEndSec
+        return !allHandled && !lastEndPassed
+    }
+
+    fun isReviewLocked(): Boolean = isReviewLockedFor(Clock.System.now().epochSeconds, uiState.value.tasks)
+
+    fun showReviewLockedHint() {
+        _uiState.update { it.copy(voiceHint = "今天还在路上,晚点再来收尾。") }
+    }
+
     fun cycleStatus(taskId: String) {
         val task = uiState.value.tasks.firstOrNull { it.id == taskId } ?: return
+        if (isReviewLocked()) return
         if (task.status == "dropped") {
             com.thinkandact.core.debug.FeDebug.reject("点行循环跳过 dropped(契约:dropped 只读)", "cycle ${task.title}")
             return
         }
-        // N-05: 已完成再点回到「未做」(撤销),不误滑到跳过;跳过用长按(见 ReviewScreen)。
+        if (task.status == "skipped") return // B6-04:跳过任务走「恢复/删除」弹窗,不直接循环
         val next = when (task.status) {
             "planned" -> "done"
             "done" -> "planned"
-            "skipped" -> "planned"
             else -> "done"
         }
         // 任务态变了 → 已显示的提醒过时,标记 stale(让用户可重新生成)。
@@ -116,8 +138,29 @@ class ReviewViewModel(
         }
     }
 
+    /** B6-04:跳过任务 → 恢复为 planned。 */
+    fun restoreTask(taskId: String) {
+        if (isReviewLocked()) return
+        viewModelScope.launch {
+            runCatching { planRepository.markTaskPlanned(taskId) }
+                .onSuccess { load() }
+                .onFailure { _uiState.update { it.copy(errorMessage = "恢复没存上,再试一次。") } }
+        }
+    }
+
+    /** B6-04:跳过/旧 dropped → 软删,各视图消失。 */
+    fun deleteTask(taskId: String) {
+        if (isReviewLocked()) return
+        viewModelScope.launch {
+            runCatching { planRepository.softDeleteTask(taskId) }
+                .onSuccess { load() }
+                .onFailure { _uiState.update { it.copy(errorMessage = "删除没存上,再试一次。") } }
+        }
+    }
+
     /** 长按标记跳过(planned → skipped);避免「完成」态一点就变跳过。 */
     fun markSkipped(taskId: String) {
+        if (isReviewLocked()) return
         val task = uiState.value.tasks.firstOrNull { it.id == taskId } ?: return
         if (task.status != "planned") return
         _uiState.update { st ->
@@ -149,6 +192,10 @@ class ReviewViewModel(
     fun startVoice() {
         val s = uiState.value
         if (s.isRecording || s.isParsing || s.parseResult != null) return
+        if (isReviewLocked()) {
+            showReviewLockedHint()
+            return
+        }
         voiceFinalText = ""
         _uiState.update { it.copy(isRecording = true, isConnecting = true, isFinalizing = false, transcript = "", voiceHint = null) }
         voiceJob = viewModelScope.launch {
@@ -201,6 +248,10 @@ class ReviewViewModel(
     fun reviseFromText(text: String) {
         val t = text.trim()
         if (t.isBlank() || uiState.value.isRecording || uiState.value.isParsing) return
+        if (isReviewLocked()) {
+            showReviewLockedHint()
+            return
+        }
         parseBatch(t)
     }
 

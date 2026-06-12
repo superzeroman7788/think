@@ -58,7 +58,7 @@ val sharedModule = module {
     viewModel { RoutineViewModel(get(), get()) }
     viewModel { MorningViewModel(get(), get(), get(), get()) }
     viewModel { ExecutionViewModel(get(), get(), get(), get(), get()) }
-    viewModel { ReviewViewModel(get(), get()) }
+    viewModel { ReviewViewModel(get(), get(), get()) }
     viewModel { HistoryViewModel(get()) }
     viewModel { InboxViewModel(get(), get()) }
     viewModel { FullPlanViewModel(get(), get(), get()) }

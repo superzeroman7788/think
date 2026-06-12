@@ -49,8 +49,8 @@ import com.thinkandact.ui.theme.TnaColors
 import com.thinkandact.ui.theme.TnaShapes
 import com.thinkandact.ui.theme.TnaTypography
 import com.thinkandact.voice.rememberMicPermissionController
+import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
@@ -85,6 +85,7 @@ fun ReviewScreen(
     var fbArmed by remember { mutableStateOf(false) }
     var barCenterY by remember { mutableStateOf(0f) } // 量底部语音条中心 → 反馈层就地盖住它
     var showReviseType by remember { mutableStateOf(false) } // F7-03 轻点打字
+    var skippedTask by remember { mutableStateOf<TaskRowDto?>(null) } // B6-04 跳过任务 → 恢复/删除
 
     // bug8:白天(未到复盘时段)进来,先给「今天的变化」小结。
     val nowHour = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour }
@@ -96,16 +97,19 @@ fun ReviewScreen(
     val hasChanges = doneN + skipN + movedN + droppedN > 0
 
     // B6-07 白天只读:今天收尾前复盘只能看不能改。解锁=全部处理完 或 最后一项结束时间已过。
-    val nowSec = remember { Clock.System.now().epochSeconds }
-    val allHandled = state.tasks.isNotEmpty() && state.tasks.all { it.status == "done" || it.status == "skipped" || it.status == "dropped" }
-    val lastEndSec = state.tasks.mapNotNull { t ->
-        t.plannedStart?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }?.let { it + (t.plannedDuration ?: 0) * 60L }
-    }.maxOrNull()
-    val lastEndPassed = lastEndSec != null && nowSec >= lastEndSec
-    val reviewLocked = state.tasks.isNotEmpty() && !allHandled && !lastEndPassed
+    var nowSec by remember { mutableStateOf(Clock.System.now().epochSeconds) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            nowSec = Clock.System.now().epochSeconds
+        }
+    }
+    val reviewLocked = viewModel.isReviewLockedFor(nowSec, state.tasks)
 
     val onVoiceStart: suspend () -> Unit = {
-        if (!state.isFinalizing && !state.isParsing && state.parseResult == null) {
+        if (reviewLocked) {
+            viewModel.showReviewLockedHint()
+        } else if (!state.isFinalizing && !state.isParsing && state.parseResult == null) {
             if (mic.request()) viewModel.startVoice() else viewModel.dismissVoiceHint()
         }
     }
@@ -152,14 +156,24 @@ fun ReviewScreen(
                         state.tasks.forEach { task ->
                             TaskReviewRow(
                                 task = task,
-                                onClick = { viewModel.cycleStatus(task.id) },
-                                onLongClick = { viewModel.markSkipped(task.id) },
+                                onClick = {
+                                    when {
+                                        reviewLocked -> Unit
+                                        task.status == "skipped" || task.status == "dropped" -> skippedTask = task
+                                        else -> viewModel.cycleStatus(task.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!reviewLocked && task.status == "planned") viewModel.markSkipped(task.id)
+                                },
                                 locked = reviewLocked,
                             )
                             Spacer(Modifier.height(8.dp))
                         }
                         Text(
-                            if (reviewLocked) "今天收尾后可改(全部处理完 / 最后一项时间过了就解锁)" else "点一下:未做 ↔ 完成 · 长按标记跳过(或用下面语音改)",
+                            if (reviewLocked) "今天收尾后可改(全部处理完 / 最后一项时间过了就解锁)"
+                            else if (skipN > 0) "点一下:未做 ↔ 完成 · 跳过项点开展恢复/删除 · 长按标记跳过"
+                            else "点一下:未做 ↔ 完成 · 长按标记跳过(或用下面语音改)",
                             style = TnaTypography.Mono.copy(color = TnaColors.Muted),
                         )
                     }
@@ -208,7 +222,10 @@ fun ReviewScreen(
                     isFinalizing = state.isFinalizing,
                     onPressStart = onVoiceStart,
                     onPressEnd = viewModel::stopVoice,
-                    onTap = { showReviseType = true },
+                    onTap = {
+                        if (reviewLocked) viewModel.showReviewLockedHint()
+                        else showReviseType = true
+                    },
                     onPressDown = { fbVisible = true },
                     onPressUp = { fbVisible = false; fbArmed = false },
                     onCancel = viewModel::cancelVoice,
@@ -240,12 +257,21 @@ fun ReviewScreen(
             )
         }
 
-        if (showReviseType) {
+        if (showReviseType && !reviewLocked) {
             com.thinkandact.ui.common.TypeInputDialog(
                 title = "改今天",
                 placeholder = "打字说说哪件做了/没做/改了",
                 onDismiss = { showReviseType = false },
                 onSubmit = { showReviseType = false; viewModel.reviseFromText(it) },
+            )
+        }
+
+        skippedTask?.let { task ->
+            SkippedTaskDialog(
+                task = task,
+                onDismiss = { skippedTask = null },
+                onRestore = { viewModel.restoreTask(task.id); skippedTask = null },
+                onDelete = { viewModel.deleteTask(task.id); skippedTask = null },
             )
         }
 
@@ -364,19 +390,22 @@ private fun Banner(text: String, onDismiss: (() -> Unit)?) {
 
 @Composable
 private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit, onLongClick: (() -> Unit)? = null, locked: Boolean = false) {
+    val skipped = task.status == "skipped"
     val dropped = task.status == "dropped"
+    val dim = skipped || dropped
     val (label, color) = statusChip(task.status)
     Row(
         modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Input).border(1.dp, TnaColors.Line, TnaShapes.Input)
             .then(
-                if (dropped || locked) Modifier // B6-07 白天只读:锁定期不可点改完成情况
+                if (locked) Modifier
+                else if (dim) Modifier.clickable(onClick = onClick)
                 else Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(task.title, style = TnaTypography.Body.copy(color = if (dropped) TnaColors.Muted else TnaColors.Ink, fontWeight = FontWeight.SemiBold))
+            Text(task.title, style = TnaTypography.Body.copy(color = if (dim) TnaColors.Muted else TnaColors.Ink, fontWeight = FontWeight.SemiBold))
             val time = formatTimeRange(task.plannedStart, task.plannedDuration, task.kind == "point")
             if (time.isNotEmpty()) Text(time, modifier = Modifier.padding(top = 2.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         }
@@ -435,6 +464,28 @@ private fun ChangeRow(name: String, detail: String, accent: Boolean = false) {
     ) {
         Text(name, modifier = Modifier.weight(1f), style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.SemiBold))
         Text(detail, style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+    }
+}
+
+/** B6-04:已跳过任务 —— 只「恢复」或「删除」,不进普通编辑。 */
+@Composable
+private fun SkippedTaskDialog(
+    task: TaskRowDto,
+    onDismiss: () -> Unit,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card).border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp)) {
+            Text(task.title, style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
+            Spacer(Modifier.height(6.dp))
+            Text("这件今天跳过了。", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TnaButton("删除", onDelete, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
+                TnaButton("恢复", onRestore, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+            }
+        }
     }
 }
 

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +69,7 @@ fun App() {
         // 没有 → 早上规划页。返回键/← 走真实返回栈:栈底(首页)按返回 → 退出 App,而不是跳 morning。
         val planRepository = koinInject<com.thinkandact.data.PlanRepository>()
         val backStack = remember { mutableStateListOf<Screen>() }
+        val appScope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
             if (backStack.isEmpty()) {
                 val hasPlan = runCatching { planRepository.hasTodayPlan() }.getOrDefault(false)
@@ -84,11 +87,19 @@ fun App() {
         // BUG-01：系统返回键 → 弹返回栈;栈底(首页)不拦 → 默认退出 App。
         AppBackHandler(enabled = backStack.size > 1) { goBack() }
 
-        // BUG-05：回前台跨午夜 → 重置到 Morning(新一天重新规划),清空旧栈。
+        // BUG-05：回前台跨午夜 → 新一天;有已确认计划则直达今天,否则进 Morning。
         var lastDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            if (today != lastDate) { lastDate = today; backStack.clear(); backStack.add(Screen.Morning) }
+            if (today != lastDate) {
+                lastDate = today
+                // hasTodayPlan() 是 suspend → 必须在协程里调(LifecycleEventEffect 的 lambda 非挂起)。
+                appScope.launch {
+                    val hasPlan = runCatching { planRepository.hasTodayPlan() }.getOrDefault(false)
+                    backStack.clear()
+                    backStack.add(if (hasPlan) Screen.Execution else Screen.Morning)
+                }
+            }
         }
         // 第四批 N-03:点 ★ 提醒通知 → 直达执行屏(消费后复位)。
         val openExecution by com.thinkandact.ui.NavSignals.openExecution.collectAsState()
