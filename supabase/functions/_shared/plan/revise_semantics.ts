@@ -40,18 +40,37 @@ export function synthesizeRejectReason(
   );
 }
 
+export function enforceBlockStabilityForPointEdits(
+  revisions: RevisionItem[],
+  planned: ReviseTaskInput[],
+): RevisionItem[] {
+  const kindById = new Map(planned.map((t) => [t.id, t.kind ?? "block"]));
+  const changed = revisions.filter((r) => r.change !== "unchanged");
+  if (changed.length === 0) return revisions;
+  const hasPointChange = changed.some((r) => kindById.get(r.task_id) === "point");
+  if (!hasPointChange) return revisions;
+
+  return revisions.map((r) => {
+    if ((kindById.get(r.task_id) ?? "block") === "block" && r.change !== "unchanged") {
+      return { ...r, change: "unchanged" as const, after: { ...r.before } };
+    }
+    return r;
+  });
+}
+
 export function finalizePlanReviseSemantics(
   revisions: RevisionItem[],
   added: AddedReviseTask[],
   planned: ReviseTaskInput[],
   warnings: string[],
   summary: string,
-): { applicable: boolean; reject_reason: string | null; warnings: string[] } {
-  const applicable = computePlanReviseApplicable(revisions, added);
+): { applicable: boolean; reject_reason: string | null; warnings: string[]; revisions: RevisionItem[] } {
+  const stableRevisions = enforceBlockStabilityForPointEdits(revisions, planned);
+  const applicable = computePlanReviseApplicable(stableRevisions, added);
   if (applicable) {
-    return { applicable: true, reject_reason: null, warnings };
+    return { applicable: true, reject_reason: null, warnings, revisions: stableRevisions };
   }
   const reject_reason = synthesizeRejectReason(planned, warnings, summary);
   const outWarnings = warnings.length > 0 ? [...warnings] : [reject_reason];
-  return { applicable: false, reject_reason, warnings: outWarnings };
+  return { applicable: false, reject_reason, warnings: outWarnings, revisions: stableRevisions };
 }

@@ -11,6 +11,7 @@ import {
   normalizeRevisions,
   parseAiReviseOutput,
 } from "./revise_schema.ts";
+import { buildBootstrapSystemHint, extractReviseIntent } from "./revise_intent.ts";
 import { finalizePlanReviseSemantics } from "./revise_semantics.ts";
 import type {
   AddedReviseTask,
@@ -42,6 +43,8 @@ function buildReviseSystemPrompt(): string {
     "- moved 后 after.actual_start 应为 null(改时间会清掉变当前标记)",
     "- dropped 的 after 只能是 { \"status\": \"dropped\" }",
     "- moved 的 after: planned_start 用 HH:MM(今天本地),status 固定 planned",
+    "- kind=point(时刻点/钉子): duration=0;只动该 point,**不得改变 block 起止**",
+    "- 用户只删/挪 point 时,所有 block 必须 unchanged",
     "- revisions 必须覆盖每一个可调整任务 id 恰好一次；无可调整任务时 revisions=[]",
     "- summary 一两句人话;warnings 可空数组",
     "- 若用户指令无法对应任何 moved/dropped/added,仍须 output 全 unchanged,但在 warnings 写清原因与换说法建议",
@@ -70,6 +73,7 @@ function buildReviseUserMessage(req: PlanReviseRequest, planned: ReviseTaskInput
         planned_start: t.planned_start,
         planned_duration: t.planned_duration,
         important: t.important,
+        kind: t.kind ?? "block",
         actual_start: t.actual_start,
         started: t.actual_start != null && t.actual_start !== "",
       })), null, 2)
@@ -122,7 +126,7 @@ export function parseProposeRequest(body: unknown): PlanReviseRequest | null {
   if (typeof b.timezone !== "string" || !b.timezone.trim()) return null;
   if (typeof b.now !== "string" || !b.now.trim()) return null;
   if (typeof b.instruction !== "string" || !b.instruction.trim()) return null;
-  if (!Array.isArray(b.tasks) || b.tasks.length === 0) return null;
+  if (!Array.isArray(b.tasks)) return null;
 
   const tasks: ReviseTaskInput[] = [];
   for (const row of b.tasks) {
@@ -131,6 +135,8 @@ export function parseProposeRequest(body: unknown): PlanReviseRequest | null {
     if (typeof t.id !== "string" || !t.id.trim()) return null;
     if (typeof t.title !== "string" || !t.title.trim()) return null;
     if (typeof t.status !== "string") return null;
+    const kindRaw = t.kind;
+    const kind = kindRaw === "point" || kindRaw === "block" ? kindRaw : undefined;
     tasks.push({
       id: t.id.trim(),
       title: t.title.trim(),
@@ -141,6 +147,7 @@ export function parseProposeRequest(body: unknown): PlanReviseRequest | null {
       actual_start: t.actual_start === null || t.actual_start === undefined
         ? null
         : String(t.actual_start),
+      kind,
     });
   }
 
@@ -211,15 +218,50 @@ export function parseApplyRequest(body: unknown): PlanReviseApplyRequest | null 
   };
 }
 
+async function createEmptyReviseProposal(
+  supabase: SupabaseClient,
+  date: string,
+): Promise<string> {
+  const { data: revisionId, error } = await supabase.rpc("create_plan_revise_proposal", {
+    p_date: date,
+    p_baseline: [],
+    p_ttl_minutes: 30,
+    p_added_proposed: [],
+  });
+  if (error) throw error;
+  return String(revisionId);
+}
+
 export async function buildPlanReviseResponse(
   supabase: SupabaseClient,
   req: PlanReviseRequest,
   adapter = createDefaultLLMAdapter(),
 ): Promise<PlanReviseResponse> {
   const planned = req.tasks.filter((t) => t.status === "planned");
+  const intent = extractReviseIntent(req.instruction, planned);
+
+  if (intent.mode === "clarify") {
+    const reject_reason = intent.reject_reason ?? "今天大概要忙点什么？随便说两句就行。";
+    const revision_id = await createEmptyReviseProposal(supabase, req.date);
+    return {
+      revision_id,
+      provider: "deepseek",
+      applicable: false,
+      reject_reason,
+      intent: { mode: "clarify" },
+      summary: reject_reason,
+      revisions: [],
+      added: [],
+      warnings: [reject_reason],
+    };
+  }
+
+  const systemPrompt = intent.mode === "bootstrap"
+    ? `${buildReviseSystemPrompt()}\n\n${buildBootstrapSystemHint()}`
+    : buildReviseSystemPrompt();
 
   const messages: LLMMessage[] = [
-    { role: "system", content: buildReviseSystemPrompt() },
+    { role: "system", content: systemPrompt },
     { role: "user", content: buildReviseUserMessage(req, planned) },
   ];
 
@@ -276,8 +318,9 @@ export async function buildPlanReviseResponse(
     provider: llm.provider,
     applicable: semantics.applicable,
     reject_reason: semantics.reject_reason,
+    intent: { mode: intent.mode },
     summary: aiParsed.value.summary,
-    revisions,
+    revisions: semantics.revisions,
     added: addedPart.added,
     warnings: semantics.warnings,
   };
@@ -330,7 +373,7 @@ export async function applyPlanRevise(
   const { data: tasks, error: fetchError } = await supabase
     .from("tasks")
     .select(
-      "id,title,note,planned_start,planned_duration,important,status,actual_start,actual_end,task_type,time_of_day",
+      "id,title,note,planned_start,planned_duration,important,status,actual_start,actual_end,task_type,time_of_day,kind,anchor_task_id",
     )
     .eq("user_id", userId)
     .eq("date", req.date)
@@ -354,6 +397,8 @@ export async function applyPlanRevise(
       actual_end: t.actual_end,
       task_type: t.task_type,
       time_of_day: t.time_of_day,
+      kind: t.kind,
+      anchor_task_id: t.anchor_task_id,
     })) as TaskRow[],
   };
 }

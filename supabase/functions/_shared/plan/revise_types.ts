@@ -6,6 +6,7 @@ export type ReviseTaskInput = {
   important: boolean;
   status: string;
   actual_start: string | null;
+  kind?: "block" | "point";
 };
 
 export type RevisionState = {
@@ -38,6 +39,13 @@ export type AddedReviseTask = {
   planned_start: string | null;
   planned_duration: number | null;
   important: boolean;
+  kind?: "block" | "point";
+};
+
+export type ReviseIntentMode = "revise" | "bootstrap" | "clarify";
+
+export type PlanReviseIntent = {
+  mode: ReviseIntentMode;
 };
 
 export type PlanReviseResponse = {
@@ -47,6 +55,8 @@ export type PlanReviseResponse = {
   applicable: boolean;
   /** applicable=false 时必填；禁止静默拒 */
   reject_reason: string | null;
+  /** v2: 意图路由（bootstrap=空计划新建 / revise=改已有 / clarify=需追问） */
+  intent: PlanReviseIntent;
   summary: string;
   revisions: RevisionItem[];
   added: AddedReviseTask[];
@@ -94,6 +104,8 @@ export type TaskRow = {
   actual_end: string | null;
   task_type: string | null;
   time_of_day: string | null;
+  kind?: string | null;
+  anchor_task_id?: string | null;
 };
 
 export type AiReviseOutput = {

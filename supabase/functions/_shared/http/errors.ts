@@ -10,7 +10,15 @@ export type ErrorCode =
   | "INVALID_REQUEST"
   | "APPLY_STALE"
   | "APPLY_CONFLICT"
-  | "REVIEW_STALE";
+  | "REVIEW_STALE"
+  | "NEEDS_CLARIFICATION"
+  | "SMS_INVALID_PHONE"
+  | "SMS_COOLDOWN"
+  | "SMS_DAILY_LIMIT"
+  | "SMS_CODE_WRONG"
+  | "SMS_SEND_FAILED"
+  | "SMS_NOT_CONFIGURED"
+  | "SMS_LOGIN_FAILED";
 
 export type ApiErrorBody = {
   error: {
@@ -80,6 +88,46 @@ const ERROR_META: Record<ErrorCode, { message: string; retryable: boolean; statu
     message: "今天的记录刚才变过了，请看一下新的再确认。",
     retryable: true,
     status: 409,
+  },
+  NEEDS_CLARIFICATION: {
+    message: "今天大概要忙点什么？随便说两句就行。",
+    retryable: false,
+    status: 422,
+  },
+  SMS_INVALID_PHONE: {
+    message: "请输入 11 位手机号",
+    retryable: false,
+    status: 400,
+  },
+  SMS_COOLDOWN: {
+    message: "发送太频繁了,稍后再试。",
+    retryable: false,
+    status: 429,
+  },
+  SMS_DAILY_LIMIT: {
+    message: "这个号码今天验证码发太多次了,明天再试吧。",
+    retryable: false,
+    status: 429,
+  },
+  SMS_CODE_WRONG: {
+    message: "验证码不对,再看一下短信。",
+    retryable: false,
+    status: 400,
+  },
+  SMS_SEND_FAILED: {
+    message: "验证码没发出去,过一下再试。",
+    retryable: true,
+    status: 502,
+  },
+  SMS_NOT_CONFIGURED: {
+    message: "短信服务还没准备好,稍后再试。",
+    retryable: true,
+    status: 503,
+  },
+  SMS_LOGIN_FAILED: {
+    message: "登录没成功,过一下再试。",
+    retryable: true,
+    status: 502,
   },
 };
 

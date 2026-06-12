@@ -1,7 +1,13 @@
 import { AllProvidersDownError, createDefaultLLMAdapter } from "../llm/adapter.ts";
 import type { LLMAdapter, LLMMessage } from "../llm/types.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  isInsufficientPlanInput,
+  NeedsClarificationError,
+  pickClarificationMessage,
+} from "./input_gate.ts";
 import { dedupePlanTasks } from "./dedupe.ts";
+import { finalizePlanTaskSemantics } from "./time_semantics.ts";
 import {
   OUTPUT_SCHEMA_HINT,
   formatHardConstraints,
@@ -9,7 +15,7 @@ import {
   renderPlanPrompt,
   weekdayZh,
 } from "./prompt.ts";
-import { buildJsonRetryUserMessage, parseAndValidatePlanOutput } from "./schema.ts";
+import { buildJsonRetryUserMessage, collectMetaLanguageErrors, parseAndValidatePlanOutput } from "./schema.ts";
 import { plannedStartToIso } from "./timezone.ts";
 import type {
   AiPlanOutput,
@@ -286,9 +292,23 @@ export async function generatePlanWithLlm(
     }
   }
 
+  const metaOnly = validated.errors.length > 0 &&
+    validated.errors.every((e) => e.includes("元话术"));
+  if (metaOnly) {
+    const userLine = rawInput.split("\n\n")[0] ?? rawInput;
+    throw new NeedsClarificationError(pickClarificationMessage(userLine));
+  }
+
   const err = new Error("AI_INVALID_JSON");
   err.name = "AI_INVALID_JSON";
   throw err;
+}
+
+function assertNoMetaLanguageOutput(output: AiPlanOutput, rawInput: string): void {
+  const metaErrors = collectMetaLanguageErrors(output);
+  if (metaErrors.length) {
+    throw new NeedsClarificationError(pickClarificationMessage(rawInput));
+  }
 }
 
 export async function buildPlanGenerateResponse(
@@ -349,8 +369,20 @@ export async function buildPlanGenerateResponse(
     deps.forceInvalidJson ?? false,
   );
 
+  assertNoMetaLanguageOutput(
+    {
+      tasks: aiOutput.tasks,
+      suggestion_tasks: aiOutput.suggestion_tasks,
+      ai_comment: aiOutput.ai_comment,
+    },
+    req.raw_input,
+  );
+
   const tasksBeforeDedupe = aiOutput.tasks.length;
-  const dedupedAiTasks = dedupePlanTasks(aiOutput.tasks);
+  const dedupedAiTasks = finalizePlanTaskSemantics(
+    dedupePlanTasks(aiOutput.tasks),
+    req.raw_input,
+  );
   if (dedupedAiTasks.length < tasksBeforeDedupe) {
     console.log(
       `[plan/generate] dedupe merged tasks ${tasksBeforeDedupe} -> ${dedupedAiTasks.length}`,

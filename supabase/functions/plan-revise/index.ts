@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
         event: "plan_revise_ok",
         user: userData.user.id,
         revision_id: response.revision_id,
+        intent: response.intent?.mode ?? "revise",
         applicable: response.applicable,
         reject_reason_len: response.reject_reason?.length ?? 0,
         changes: response.revisions.filter((r) => r.change !== "unchanged").length,

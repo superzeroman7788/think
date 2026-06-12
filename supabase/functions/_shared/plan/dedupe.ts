@@ -111,6 +111,13 @@ function sortKey(task: AiTaskItem): number {
  * Conservative: only merge when title matches and time windows overlap or are near.
  */
 export function dedupePlanTasks(tasks: AiTaskItem[]): AiTaskItem[] {
+  const points = tasks.filter((t) => t.kind === "point");
+  const blocks = tasks.filter((t) => t.kind !== "point");
+  if (blocks.length <= 1) return [...blocks, ...points];
+  return [...dedupeBlocksOnly(blocks), ...points];
+}
+
+function dedupeBlocksOnly(tasks: AiTaskItem[]): AiTaskItem[] {
   if (tasks.length <= 1) return tasks;
 
   const sorted = [...tasks].sort((a, b) => sortKey(a) - sortKey(b) || a.title.localeCompare(b.title));

@@ -29,3 +29,10 @@ export function getUserIdFromJwt(token: string): string | null {
     return null;
   }
 }
+
+/** Service role — auth admin, SMS audit, bypass RLS. */
+export function createServiceClient(): SupabaseClient {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  return createClient(url, serviceKey);
+}

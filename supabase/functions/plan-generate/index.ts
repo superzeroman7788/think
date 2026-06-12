@@ -5,6 +5,11 @@ import {
   consumeFairUse,
   isTimeoutError,
 } from "../_shared/plan/generate.ts";
+import {
+  isInsufficientPlanInput,
+  NeedsClarificationError,
+  pickClarificationMessage,
+} from "../_shared/plan/input_gate.ts";
 import { setPlanGenerateTemplate } from "../_shared/plan/prompt.ts";
 import { planGenerateTemplate } from "./plan_generate_v1.bundle.ts";
 import type { PlanGenerateRequest } from "../_shared/plan/types.ts";
@@ -78,6 +83,10 @@ Deno.serve(async (req) => {
     return apiError("INPUT_TOO_LONG");
   }
 
+  if (isInsufficientPlanInput(parsed.raw_input)) {
+    return apiError("NEEDS_CLARIFICATION", pickClarificationMessage(parsed.raw_input));
+  }
+
   const forceInvalidJson = new URL(req.url).searchParams.get("debug_force_invalid_json") === "1";
   if (forceInvalidJson) {
     console.log("[plan/generate] debug_force_invalid_json enabled");
@@ -123,6 +132,9 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify(response), { status: 200, headers });
   } catch (error) {
+    if (error instanceof NeedsClarificationError) {
+      return apiError("NEEDS_CLARIFICATION", error.followUp);
+    }
     if (error instanceof Error && error.name === "AI_INVALID_JSON") {
       return apiError("AI_INVALID_JSON");
     }

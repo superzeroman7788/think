@@ -1,0 +1,64 @@
+=== 时刻点 BE 验收 ===
+commit=50a34714
+log=/Users/bryan/think/docs/test-evidence/point-kind-20260611_190823.log
+
+=== 1) 单元测试 time_semantics + revise_semantics ===
+[0m[32mCheck[0m supabase/functions/_shared/plan/time_semantics_test.ts
+[0m[32mCheck[0m supabase/functions/_shared/plan/plan_revise_v13_test.ts
+[0m[38;5;245mrunning 7 tests from ./supabase/functions/_shared/plan/time_semantics_test.ts[0m
+parse: 下午2点到6点 → 14:00, 240min ... [0m[32mok[0m [0m[38;5;245m(6ms)[0m
+parse: 2点到6点工作 → afternoon heuristic 14:00 ... [0m[31mFAILED[0m [0m[38;5;245m(1ms)[0m
+semantic: missing duration fails validation ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+semantic: correct block passes ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+semantic: reminder → point required ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+finalize: block + point in one utterance ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+parseExpectedPointTimes: 3点提醒 ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+[0m[38;5;245mrunning 6 tests from ./supabase/functions/_shared/plan/plan_revise_v13_test.ts[0m
+applicable true when moved ... [0m[32mok[0m [0m[38;5;245m(5ms)[0m
+applicable false when all unchanged ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+finalize: applicable=false always has reject_reason + warnings ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+finalize: uses existing warning before synthesizing ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+synthesize includes task titles when no warnings ... [0m[32mok[0m [0m[38;5;245m(0ms)[0m
+finalize: point-only edits force blocks unchanged ... [0m[31mFAILED[0m [0m[38;5;245m(1ms)[0m
+
+[0m[1m[37m[41m ERRORS [0m
+
+finalize: point-only edits force blocks unchanged [0m[38;5;245m=> ./supabase/functions/_shared/plan/plan_revise_v13_test.ts:71:6[0m
+[0m[1m[31merror[0m: AssertionError: Values are not equal.
+
+
+    [90m[1m[Diff][22m[39m [31m[1mActual[22m[39m / [32m[1mExpected[22m[39m
+
+
+[31m[1m-   [31m[1mmoved[1m[31m
+[22m[39m[32m[1m+   [32m[1munchanged[1m[32m
+[22m[39m
+
+  throw new AssertionError(message);
+[0m[31m        ^[0m
+    at [0m[1m[3massertEquals[0m ([0m[36mhttps://deno.land/std@0.224.0/assert/assert_equals.ts[0m:[0m[33m52[0m:[0m[33m9[0m)
+    at [0m[2m[38;5;245mfile:///Users/bryan/think/[0m[0m[36msupabase/functions/_shared/plan/plan_revise_v13_test.ts[0m:[0m[33m132[0m:[0m[33m3[0m
+
+parse: 2点到6点工作 → afternoon heuristic 14:00 [0m[38;5;245m=> ./supabase/functions/_shared/plan/time_semantics_test.ts:24:6[0m
+[0m[1m[31merror[0m: AssertionError: Values are not equal.
+
+
+    [90m[1m[Diff][22m[39m [31m[1mActual[22m[39m / [32m[1mExpected[22m[39m
+
+
+[31m[1m-   960[22m[39m
+[32m[1m+   240[22m[39m
+
+  throw new AssertionError(message);
+[0m[31m        ^[0m
+    at [0m[1m[3massertEquals[0m ([0m[36mhttps://deno.land/std@0.224.0/assert/assert_equals.ts[0m:[0m[33m52[0m:[0m[33m9[0m)
+    at [0m[2m[38;5;245mfile:///Users/bryan/think/[0m[0m[36msupabase/functions/_shared/plan/time_semantics_test.ts[0m:[0m[33m27[0m:[0m[33m3[0m
+
+[0m[1m[37m[41m FAILURES [0m
+
+finalize: point-only edits force blocks unchanged [0m[38;5;245m=> ./supabase/functions/_shared/plan/plan_revise_v13_test.ts:71:6[0m
+parse: 2点到6点工作 → afternoon heuristic 14:00 [0m[38;5;245m=> ./supabase/functions/_shared/plan/time_semantics_test.ts:24:6[0m
+
+[0m[31mFAILED[0m | 11 passed | 2 failed [0m[38;5;245m(44ms)[0m
+
+[0m[1m[31merror[0m: Test failed

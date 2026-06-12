@@ -23,7 +23,7 @@ export function buildReviseSchemaHint(): string {
     }
   ],
   "added": [
-    { "title": "今天要新加的事", "planned_start": "HH:MM 可选", "planned_duration": 30, "important": false }
+    { "title": "今天要新加的事", "planned_start": "HH:MM 可选", "planned_duration": 30, "important": false, "kind": "block|point" }
   ]
 }
 规则:
@@ -33,6 +33,8 @@ export function buildReviseSchemaHint(): string {
 - added 不要重复已有任务标题
 - dropped 的 after 只能是 { "status": "dropped" }
 - moved 的 after 必须含 planned_start(HH:MM) 和 status:"planned";actual_start 置 null
+- kind=point 的任务: moved 时 planned_duration=0;**不得改动 block 的起止**
+- 用户只调整 point(删/挪钉)时,所有 block 必须 unchanged
 - actual_start 非空只表示执行屏「变当前」,仍允许 moved(改时间会清掉变当前标记)`;
 }
 
@@ -115,6 +117,7 @@ export function parseAiReviseOutput(raw: string): {
         planned_start: typeof row.planned_start === "string" ? row.planned_start : undefined,
         planned_duration: typeof row.planned_duration === "number" ? row.planned_duration : undefined,
         important: row.important === true,
+        kind: row.kind === "point" ? "point" : "block",
       });
     }
   }
@@ -200,7 +203,12 @@ export function normalizeRevisions(
         after = { ...before };
       } else {
         const dur = raw?.after?.planned_duration;
-        const duration = typeof dur === "number" ? dur : before.planned_duration;
+        const isPoint = (task.kind ?? "block") === "point";
+        const duration = isPoint
+          ? 0
+          : typeof dur === "number"
+          ? dur
+          : before.planned_duration;
         after = {
           planned_start: ps,
           planned_duration: duration,
@@ -265,8 +273,9 @@ export function normalizeAddedRevise(
       client_key: crypto.randomUUID(),
       title,
       planned_start: normalizeIsoOrHhmm(row.planned_start, date, timezone),
-      planned_duration: row.planned_duration ?? 30,
+      planned_duration: row.kind === "point" ? 0 : (row.planned_duration ?? 30),
       important: row.important === true,
+      kind: row.kind === "point" ? "point" : "block",
     });
   }
 
@@ -280,5 +289,6 @@ export function buildAddedReviseSnapshot(added: AddedReviseTask[]): Array<Record
     planned_start: a.planned_start,
     planned_duration: a.planned_duration,
     important: a.important,
+    kind: a.kind ?? "block",
   }));
 }

@@ -25,6 +25,8 @@ export type TaskSource = "user_voice" | "user_text" | "wechat" | "ai_suggestion"
 
 export type TaskStatus = "planned" | "done" | "skipped" | "dropped" | "suggested";
 
+export type TaskKind = "block" | "point";
+
 export type AiTaskItem = {
   title: string;
   note?: string;
@@ -33,6 +35,11 @@ export type AiTaskItem = {
   important?: boolean;
   task_type: TaskType;
   time_of_day: TimeOfDay;
+  /** block=时间块(默认); point=时刻点钉子 */
+  kind?: TaskKind;
+  /** 提案阶段:锚定 block 的 planned_start(HH:MM); 落库后 FE 写 anchor_task_id */
+  anchor_block_start?: string;
+  anchor_task_id?: string | null;
 };
 
 export type AiPlanOutput = {

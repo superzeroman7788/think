@@ -46,8 +46,10 @@ export const OUTPUT_SCHEMA_HINT = `{
           "title": { "type": "string", "maxLength": 60 },
           "note": { "type": "string", "maxLength": 100 },
           "planned_start": { "type": "string", "pattern": "^[0-9]{2}:[0-9]{2}$" },
-          "planned_duration": { "type": "integer", "minimum": 5, "maximum": 240 },
+          "planned_duration": { "type": "integer", "minimum": 0, "maximum": 480 },
           "important": { "type": "boolean" },
+          "kind": { "enum": ["block", "point"] },
+          "anchor_block_start": { "type": "string", "pattern": "^[0-9]{2}:[0-9]{2}$" },
           "task_type": { "enum": ["deep_work","admin","social","health","errand","recovery"] },
           "time_of_day": { "enum": ["morning","midday","afternoon","evening"] }
         }

@@ -67,3 +67,69 @@ Deno.test("synthesize includes task titles when no warnings", () => {
   const reason = synthesizeRejectReason(planned, [], "");
   assertEquals(reason.includes("跑步"), true);
 });
+
+Deno.test("finalize: point-only edits force blocks unchanged", () => {
+  const blockTask: ReviseTaskInput = {
+    id: "b1",
+    title: "工作",
+    status: "planned",
+    planned_start: "2026-06-02T14:00:00+08:00",
+    planned_duration: 240,
+    important: false,
+    actual_start: null,
+    kind: "block",
+  };
+  const pointTask: ReviseTaskInput = {
+    id: "p1",
+    title: "打电话",
+    status: "planned",
+    planned_start: "2026-06-02T15:00:00+08:00",
+    planned_duration: 0,
+    important: false,
+    actual_start: null,
+    kind: "point",
+  };
+  const revisions: RevisionItem[] = [
+    {
+      task_id: "b1",
+      title: "工作",
+      change: "moved",
+      started: false,
+      before: {
+        planned_start: blockTask.planned_start,
+        planned_duration: 240,
+        status: "planned",
+        actual_start: null,
+      },
+      after: {
+        planned_start: "2026-06-02T15:00:00+08:00",
+        planned_duration: 240,
+        status: "planned",
+        actual_start: null,
+      },
+    },
+    {
+      task_id: "p1",
+      title: "打电话",
+      change: "dropped",
+      started: false,
+      before: {
+        planned_start: pointTask.planned_start,
+        planned_duration: 0,
+        status: "planned",
+        actual_start: null,
+      },
+      after: {
+        planned_start: pointTask.planned_start,
+        planned_duration: 0,
+        status: "dropped",
+        actual_start: null,
+      },
+    },
+  ];
+
+  const out = finalizePlanReviseSemantics(revisions, [], [blockTask, pointTask], [], "删掉提醒");
+  assertEquals(out.revisions[0].change, "unchanged");
+  assertEquals(out.revisions[1].change, "dropped");
+  assertEquals(out.applicable, true);
+});
