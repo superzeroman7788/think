@@ -69,7 +69,7 @@ fun formatTimeRange(plannedStart: String?, plannedDurationMin: Int?, isPoint: Bo
 }
 
 /**
- * 变更预览 diff 文案(F7-01,定死格式)。change=moved/dropped；point 由 duration==0 推断。
+ * 变更预览 diff 文案(F7-01,定死格式)。change=moved/skip/delete；point 由 duration==0 推断。
  * moved/block → 两行「原  …」「新  …」(+ 时长变化第三行)；moved/point → 「原 15:00 / 新 16:00」。
  */
 fun reviseDiffDetail(
@@ -82,7 +82,8 @@ fun reviseDiffDetail(
     val isPoint = afterDur == 0 || beforeDur == 0
     val beforeRange = formatTimeRange(beforeStart, beforeDur, isPoint)
     return when (change) {
-        "dropped" -> if (beforeRange.isNotEmpty()) "原 $beforeRange → 不做了" else "不做了"
+        "skip", "dropped" -> if (beforeRange.isNotEmpty()) "原 $beforeRange → 跳过" else "跳过"
+        "delete" -> if (beforeRange.isNotEmpty()) "原 $beforeRange → 删除" else "删除"
         "moved" -> {
             if (isPoint) {
                 "原 ${formatClock(beforeStart)} / 新 ${formatClock(afterStart)}"

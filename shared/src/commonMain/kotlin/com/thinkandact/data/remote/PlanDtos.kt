@@ -232,7 +232,7 @@ data class PlanReviseResponse(
     val revisions: List<RevisionDto> = emptyList(),
     val added: List<AddedReviseDto> = emptyList(),
     val warnings: List<String> = emptyList(),
-    /** v1.3：true ⟺ 有 moved/dropped/added。BE 未升级时默认 true,FE 仍按本地是否有变更判定。 */
+    /** v1.3：true ⟺ 有 moved/skip/delete/added。BE 未升级时默认 true,FE 仍按本地是否有变更判定。 */
     val applicable: Boolean = true,
     /** v1.3：applicable=false 时后端必填的人话拒绝原因;FE 必须照实展示,**不得**用固定「没听出」覆盖。 */
     @SerialName("reject_reason") val rejectReason: String? = null,
@@ -249,7 +249,7 @@ data class PlanReviseIntentDto(
 data class RevisionDto(
     @SerialName("task_id") val taskId: String,
     val title: String = "",
-    /** moved / dropped / unchanged */
+    /** moved / skip / delete / unchanged */
     val change: String = "unchanged",
     val started: Boolean = false,
     val before: RevisionStateDto = RevisionStateDto(),
@@ -268,7 +268,7 @@ data class RevisionStateDto(
 data class PlanReviseApplyRequest(
     val date: String,
     @SerialName("revision_id") val revisionId: String,
-    /** 仅 moved + dropped（unchanged 不传）。 */
+    /** 仅 moved + skip + delete（unchanged 不传）。 */
     val revisions: List<ApplyRevisionDto> = emptyList(),
     val added: List<ApplyAddedReviseDto> = emptyList(),
 )
