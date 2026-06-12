@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Mic
@@ -58,11 +60,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.thinkandact.core.time.formatTimeRange
-import com.thinkandact.ui.common.BrandWordmark
 import com.thinkandact.ui.common.SectionLabel
+import com.thinkandact.ui.common.TnaTopBar
+import com.thinkandact.ui.common.TnaTopBarAction
 import com.thinkandact.ui.common.TnaButton
 import com.thinkandact.ui.common.TnaButtonStyle
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -148,19 +152,24 @@ fun MorningScreen(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(modifier = Modifier.height(10.dp))
-            MorningHeader(onOpenRoutines = onOpenRoutines, onOpenExecution = onOpenExecution, onOpenHistory = onOpenHistory, onOpenSettings = onOpenSettings)
+        // 通用顶栏(改版):去字标,四个同款圆形矢量图标按钮,右对齐;「今天→」实底突出。
+        Spacer(modifier = Modifier.height(10.dp))
+        TnaTopBar(
+            actions = listOf(
+                TnaTopBarAction(Icons.Rounded.Settings, "设置", onOpenSettings),
+                TnaTopBarAction(Icons.Rounded.BarChart, "过去 7 天", onOpenHistory),
+                TnaTopBarAction(Icons.Rounded.CalendarMonth, "我的日常", onOpenRoutines),
+                TnaTopBarAction(Icons.AutoMirrored.Rounded.ArrowForward, "今天", onOpenExecution, primary = true),
+            ),
+            modifier = Modifier.padding(horizontal = 20.dp),
+        )
 
-            // 早上浮现（§三）：到日子了的收件箱召回卡。
-            if (state.recallItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
+        // 早上浮现（§三）：到日子了的收件箱召回卡。
+        if (state.recallItems.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 InboxRecallCards(
                     items = state.recallItems,
                     expanded = state.recallExpanded,
@@ -170,15 +179,19 @@ fun MorningScreen(
                     onToggleExpand = viewModel::toggleRecallExpanded,
                 )
             }
+        }
 
-            when {
-                // 生成 / 重新生成中：优先显示加载提示。重排时（已有 proposal）给出
-                // 「正在帮你改今天」的话术，让用户知道这次语音调整收到了、正在处理。
-                state.isLoading -> LoadingContent(
-                    isAdjusting = state.proposal != null,
-                    onCancel = viewModel::cancelGeneratePlan,
-                )
-                state.proposal != null -> ProposalContent(
+        when {
+            // 生成 / 重新生成中：优先显示加载提示。
+            state.isLoading -> Column(
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            ) {
+                LoadingContent(isAdjusting = state.proposal != null, onCancel = viewModel::cancelGeneratePlan)
+            }
+            state.proposal != null -> Column(
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            ) {
+                ProposalContent(
                     tasks = state.editableTasks,
                     aiComment = state.proposal!!.aiComment,
                     isConfirmed = state.isConfirmed,
@@ -192,29 +205,31 @@ fun MorningScreen(
                     onRetrySave = onConfirmPlan,
                     onAcceptSuggestion = viewModel::acceptSuggestion,
                 )
-                else -> EntryContent(
-                    rawInput = state.rawInput,
-                    isPreparingSession = state.isPreparingSession,
-                    errorMessage = state.errorMessage,
-                    isRecording = state.isRecording,
-                    isVoiceConnecting = state.isVoiceConnecting,
-                    isVoiceFinalizing = state.isVoiceFinalizing,
-                    voiceSpokenText = state.voiceSpokenText,
-                    voiceHint = state.voiceHint,
-                    onInputChange = viewModel::onInputChange,
-                    onGenerate = viewModel::generatePlan,
-                    onRetry = viewModel::retry,
-                    onMicPressStart = onMicPressStart,
-                    onMicPressEnd = onMicPressEnd,
-                    onDismissVoiceHint = viewModel::dismissVoiceHint,
-                    onPressDown = onFbDown,
-                    onPressUp = onFbUp,
-                    onCancel = viewModel::cancelVoiceInput,
-                    onCancelArmedChange = onFbArmed,
-                    onBarCenter = { barCenterY = it },
-                )
+                Spacer(modifier = Modifier.height(18.dp))
             }
-            Spacer(modifier = Modifier.height(18.dp))
+            // 输入页(改版):输入框=主角占满,标题/副标在上,语音条+生成今天钉底。
+            else -> EntryContent(
+                modifier = Modifier.weight(1f),
+                rawInput = state.rawInput,
+                isPreparingSession = state.isPreparingSession,
+                errorMessage = state.errorMessage,
+                isRecording = state.isRecording,
+                isVoiceConnecting = state.isVoiceConnecting,
+                isVoiceFinalizing = state.isVoiceFinalizing,
+                voiceSpokenText = state.voiceSpokenText,
+                voiceHint = state.voiceHint,
+                onInputChange = viewModel::onInputChange,
+                onGenerate = viewModel::generatePlan,
+                onRetry = viewModel::retry,
+                onMicPressStart = onMicPressStart,
+                onMicPressEnd = onMicPressEnd,
+                onDismissVoiceHint = viewModel::dismissVoiceHint,
+                onPressDown = onFbDown,
+                onPressUp = onFbUp,
+                onCancel = viewModel::cancelVoiceInput,
+                onCancelArmedChange = onFbArmed,
+                onBarCenter = { barCenterY = it },
+            )
         }
 
         if (state.proposal != null && !state.isLoading) {
@@ -303,76 +318,6 @@ fun MorningScreen(
     }
 }
 
-@Composable
-private fun MorningHeader(onOpenRoutines: () -> Unit, onOpenExecution: () -> Unit, onOpenHistory: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        BrandWordmark(modifier = Modifier.weight(1f))
-        // 设置入口：齿轮图标。
-        Box(
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(38.dp)
-                .background(TnaColors.Surface, RoundedCornerShape(999.dp))
-                .border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenSettings),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Settings,
-                contentDescription = "设置",
-                tint = TnaColors.AccentDeep,
-                modifier = Modifier.width(20.dp).height(20.dp),
-            )
-        }
-        // 历史视图入口：顶部图表图标。
-        Box(
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(38.dp)
-                .background(TnaColors.Surface, RoundedCornerShape(999.dp))
-                .border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenHistory),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.BarChart,
-                contentDescription = "过去 7 天",
-                tint = TnaColors.AccentDeep,
-                modifier = Modifier.width(20.dp).height(20.dp),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .background(TnaColors.AccentSoft, RoundedCornerShape(999.dp))
-                .border(1.dp, TnaColors.Accent.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenExecution)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "今天 →", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold))
-        }
-        Box(
-            modifier = Modifier
-                .background(TnaColors.Surface, RoundedCornerShape(999.dp))
-                .border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenRoutines)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.CalendarMonth,
-                    contentDescription = "打开我的日常",
-                    tint = TnaColors.AccentDeep,
-                    modifier = Modifier.padding(end = 6.dp).width(18.dp).height(18.dp)
-                )
-                Text(text = "我的日常", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold))
-            }
-        }
-    }
-    Text(text = "morning.", modifier = Modifier.padding(top = 14.dp), style = TnaTypography.Display)
-}
 
 /** 早上浮现（§三）：到日子了的收件箱召回卡。最多 3 条，余下折叠。 */
 @Composable
@@ -430,6 +375,7 @@ private fun recallPrefix(createdAt: String?): String {
 
 @Composable
 private fun EntryContent(
+    modifier: Modifier = Modifier,
     rawInput: String,
     isPreparingSession: Boolean,
     errorMessage: String?,
@@ -450,33 +396,78 @@ private fun EntryContent(
     onCancelArmedChange: (Boolean) -> Unit = {},
     onBarCenter: (Float) -> Unit = {},
 ) {
-    Text(text = "把脑子里的今天倒在这里,我帮你收成一条舒服的时间线。", modifier = Modifier.padding(top = 12.dp, bottom = 18.dp), style = TnaTypography.AiVoice)
-    MorningInput(value = rawInput, onValueChange = onInputChange, placeholder = "今天上午写文档,下午3点开会,晚上想跑步", modifier = Modifier.height(148.dp))
-    // 首页不放听写气泡：转写文字会直接进输入框、按钮自身也显示「准备中/在听/整理中」，
-    // 气泡是重复的；更重要的是它插在输入框与按钮之间会把按钮往下顶一截，
-    // 导致按住的手指脱离按钮、手势被取消而「一按就断」。去掉后按钮位置稳定。
-    VoiceInputRow(
-        isRecording = isRecording,
-        isConnecting = isVoiceConnecting,
-        isFinalizing = isVoiceFinalizing,
-        onMicPressStart = onMicPressStart,
-        onMicPressEnd = onMicPressEnd,
-        onPressDown = onPressDown,
-        onPressUp = onPressUp,
-        onCancel = onCancel,
-        onCancelArmedChange = onCancelArmedChange,
-        onBarCenter = onBarCenter,
-        modifier = Modifier.padding(top = 10.dp)
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        // 标题区(压扁):大标题 + 一行副标,超长省略不换行。
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "日程规划", style = TnaTypography.Display)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "把脑子里的今天倒在这里,我帮你收成一条舒服的时间线。",
+            style = TnaTypography.AiVoice,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        // 输入框 = 主角:占满副标以下、语音条以上的全部空间,多行内部滚动。
+        MorningInput(
+            value = rawInput,
+            onValueChange = onInputChange,
+            placeholder = "今天上午写文档,下午3点开会,晚上想跑步",
+            // 输入框占可用空间的 3/4(缩小 1/4);余下 1/4 由底部留白吸收,语音条+按钮随之上挪。
+            modifier = Modifier.weight(3f).fillMaxWidth(),
+        )
+        CharCountFooter(rawInput)
+        // 首页不放听写气泡(理由见旧版注释):转写直接进框、按钮自身显示状态,且避免顶高按钮断手势。
+        voiceHint?.let { VoiceHintPanel(message = it, onDismiss = onDismissVoiceHint, modifier = Modifier.padding(top = 8.dp)) }
+        errorMessage?.let { ErrorPanel(message = it, onRetry = onRetry, modifier = Modifier.padding(top = 8.dp)) }
+        // 底部钉死:语音条(样式保持现状)+ 生成今天。
+        VoiceInputRow(
+            isRecording = isRecording,
+            isConnecting = isVoiceConnecting,
+            isFinalizing = isVoiceFinalizing,
+            onMicPressStart = onMicPressStart,
+            onMicPressEnd = onMicPressEnd,
+            onPressDown = onPressDown,
+            onPressUp = onPressUp,
+            onCancel = onCancel,
+            onCancelArmedChange = onCancelArmedChange,
+            onBarCenter = onBarCenter,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        TnaButton(
+            text = if (isPreparingSession) "准备中" else "生成今天",
+            onClick = onGenerate,
+            enabled = rawInput.isNotBlank() && !isPreparingSession,
+            style = TnaButtonStyle.Primary,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
+        )
+        // 缩小输入框后余下的 1/4 留白:把语音条+按钮整体上挪、屏幕底部留呼吸。
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+/** 输入框底部:虚线分隔 + 小字计数(有内容时右侧「说多少都放得下」)。 */
+@Composable
+private fun CharCountFooter(text: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp).height(1.dp)
+            .drawBehind {
+                drawLine(
+                    color = TnaColors.Line,
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 5f)),
+                )
+            },
     )
-    voiceHint?.let { VoiceHintPanel(message = it, onDismiss = onDismissVoiceHint, modifier = Modifier.padding(top = 10.dp)) }
-    errorMessage?.let { ErrorPanel(message = it, onRetry = onRetry, modifier = Modifier.padding(top = 12.dp)) }
-    TnaButton(
-        text = if (isPreparingSession) "准备中" else "生成今天",
-        onClick = onGenerate,
-        enabled = rawInput.isNotBlank() && !isPreparingSession,
-        style = TnaButtonStyle.Primary,
-        modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
-    )
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(text = "${text.length} 字", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        Spacer(modifier = Modifier.weight(1f))
+        if (text.isNotBlank()) {
+            Text(text = "说多少都放得下", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        }
+    }
 }
 
 /** 早上屏语音条:薄适配层 → 共享 [VoiceMicButton]（含按住即时反馈秒应 + 上滑取消 + tap-slop）。 */

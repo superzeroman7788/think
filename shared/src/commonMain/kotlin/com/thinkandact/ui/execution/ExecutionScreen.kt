@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FormatListBulleted
+import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -49,6 +51,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,8 +67,11 @@ import com.thinkandact.core.time.reviseDiffDetail
 import com.thinkandact.data.remote.AddedReviseDto
 import com.thinkandact.data.remote.RevisionDto
 import com.thinkandact.data.remote.TaskRowDto
+import com.thinkandact.core.time.formatDuration
 import com.thinkandact.ui.common.TnaButton
 import com.thinkandact.ui.common.TnaButtonStyle
+import com.thinkandact.ui.common.TnaTopBar
+import com.thinkandact.ui.common.TnaTopBarAction
 import com.thinkandact.ui.common.PressFeedbackOverlay
 import com.thinkandact.ui.common.VoiceMicButton
 import com.thinkandact.ui.theme.TnaColors
@@ -311,66 +319,35 @@ private fun String?.hhmmBanner(): String {
 
 @Composable
 private fun ExecutionHeader(progress: Int, total: Int, onBack: () -> Unit, showBack: Boolean = true, onOpenReview: () -> Unit, onOpenFullPlan: () -> Unit = {}, onOpenInbox: () -> Unit = {}, inboxBadge: Int = 0) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // 「今天」作为冷启动首页时不显示 ← (无上一页,避免误退回早上规划页)。
-        if (showBack) {
-            Box(
-                modifier = Modifier
-                    .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
-                    .clickable(onClick = onBack)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(text = "←", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
-            }
-        }
-        Text(text = "今天", modifier = Modifier.padding(start = if (showBack) 12.dp else 0.dp).weight(1f), style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
-        // 收件箱入口 + 角标(§六:count=pending 且 due≤今天;0 不显示)。
-        Box(modifier = Modifier.padding(end = 8.dp)) {
-            Box(
-                modifier = Modifier
-                    .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
-                    .clickable(onClick = onOpenInbox)
-                    .semantics { contentDescription = if (inboxBadge > 0) "收件箱,$inboxBadge 条待处理" else "收件箱" }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(text = "▤", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep))
-            }
-            if (inboxBadge > 0) {
-                Box(
-                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp)
-                        .background(TnaColors.Accent, RoundedCornerShape(999.dp)).padding(horizontal = 5.dp, vertical = 1.dp),
-                ) { Text(text = if (inboxBadge > 9) "9+" else "$inboxBadge", style = TnaTypography.Mono.copy(color = Color.White, fontSize = 10.sp)) }
-            }
-        }
-        // 完整计划入口(列表图标):拉远看整天 + 随时改。
-        Box(
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenFullPlan)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-        ) {
-            Icon(imageVector = Icons.Rounded.FormatListBulleted, contentDescription = "完整计划", tint = TnaColors.AccentDeep, modifier = Modifier.width(18.dp).height(18.dp))
-        }
-        Box(
-            modifier = Modifier
-                .background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenReview)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        ) {
-            Text(text = "复盘", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold))
-        }
-        if (total > 0) {
-            Text(
-                text = "$progress / $total",
-                modifier = Modifier.padding(start = 8.dp).background(TnaColors.Surface.copy(alpha = 0.72f), RoundedCornerShape(999.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
-                style = TnaTypography.Mono.copy(color = TnaColors.Accent, fontWeight = FontWeight.Bold),
-            )
-        }
-    }
+    // 改版:复用通用顶栏 —— 标题「今日日程」+ 收件箱(带角标)/完整计划/复盘(月亮)三圆 + 小号进度胶囊。
+    TnaTopBar(
+        title = "今日日程",
+        onBack = if (showBack) onBack else null,
+        actions = listOf(
+            TnaTopBarAction(Icons.Rounded.Inbox, "收件箱", onOpenInbox, badge = inboxBadge),
+            TnaTopBarAction(Icons.AutoMirrored.Rounded.FormatListBulleted, "完整计划", onOpenFullPlan),
+            TnaTopBarAction(Icons.Rounded.Bedtime, "复盘", onOpenReview),
+        ),
+        trailing = if (total > 0) {
+            { ProgressPill(progress, total) }
+        } else {
+            null
+        },
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+    )
+}
+
+/** 进度状态胶囊「2 / 5」:小号、收紧内边距,是状态标签不是按钮。 */
+@Composable
+private fun ProgressPill(progress: Int, total: Int) {
+    Text(
+        text = "$progress / $total",
+        modifier = Modifier
+            .background(TnaColors.Surface, RoundedCornerShape(999.dp))
+            .border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep, fontSize = 10.5.sp),
+    )
 }
 
 /**
@@ -411,9 +388,13 @@ private fun CurrentTaskCenter(
         }
         Spacer(modifier = Modifier.height(10.dp))
         // 星环（§4.6）：双环 + 8 星 + 彗星；潮水进度沿用定稿。环心 = 三态分钟倒计时。
-        Box(modifier = Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-            StarRing(progress = progress, dusk = dusk, modifier = Modifier.fillMaxSize())
-            RingCenterCountdown(countdown)
+        // 环后常驻柔光(Loora 暖版)垫在星环之后,不抢星环。
+        Box(contentAlignment = Alignment.Center) {
+            RingSoftGlow()
+            Box(modifier = Modifier.size(220.dp), contentAlignment = Alignment.Center) {
+                StarRing(progress = progress, dusk = dusk, modifier = Modifier.fillMaxSize())
+                RingCenterCountdown(countdown)
+            }
         }
         Spacer(modifier = Modifier.height(6.dp))
         Box(contentAlignment = Alignment.Center) {
@@ -475,53 +456,75 @@ private fun ringCountdown(plannedStart: String?, plannedDuration: Int?, nowSec: 
 private fun RingCenterCountdown(cd: RingCountdown?) {
     when (cd) {
         null -> Unit // 无固定时间：不出现倒计时
-        is RingCountdown.Before -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BigMinutes(cd.minutes)
-            Spacer(modifier = Modifier.height(6.dp))
-            RingSub(text = "距开始", near = false)
-        }
-        is RingCountdown.During -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BigMinutes(cd.minutes)
-            Spacer(modifier = Modifier.height(6.dp))
-            if (cd.minutes <= 10) RingSub(text = "快到时间了", near = true)
-            else RingSub(text = "距结束", near = false)
-        }
-        is RingCountdown.Over -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // 「超」—— 柔暖陶土半透、字距 3，不刺眼、无压力感。
-            Text(
-                text = "超",
-                style = TnaTypography.AiVoice.copy(
-                    fontSize = 14.sp,
-                    color = OverTint.copy(alpha = 0.55f),
-                    letterSpacing = 3.sp,
-                ),
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            BigMinutes(cd.minutes)
-            Spacer(modifier = Modifier.height(4.dp))
-            // 温和、带问号，不是命令/失败。
-            RingSub(text = "该收尾了？", near = false)
-        }
+        is RingCountdown.Before -> RingTriState("距开始", cd.minutes, near = false, ask = null)
+        is RingCountdown.During -> RingTriState(
+            status = if (cd.minutes <= 10) "快到时间了" else "距结束",
+            minutes = cd.minutes,
+            near = cd.minutes <= 10,
+            ask = null,
+        )
+        is RingCountdown.Over -> RingTriState("超过", cd.minutes, near = true, ask = "是否要结束")
     }
 }
 
-/** 大数字（mono clay）+ 小一号「分」(opacity .66)。 */
+/** v7/v9 环心三态：状态字在上 / formatDuration 值居中 / (超时)「是否要结束」在下。 */
 @Composable
-private fun BigMinutes(minutes: Int) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            text = minutes.toString(),
-            style = TnaTypography.Mono.copy(color = Clay, fontSize = 44.sp, fontWeight = FontWeight.Medium),
-        )
-        Text(
-            text = "分",
-            modifier = Modifier.padding(start = 3.dp, bottom = 6.dp),
-            style = TnaTypography.Body.copy(color = Clay.copy(alpha = 0.66f), fontSize = 18.sp),
+private fun RingTriState(status: String, minutes: Int, near: Boolean, ask: String?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        RingSub(text = status, near = near)
+        Spacer(modifier = Modifier.height(7.dp))
+        RingValue(minutes)
+        if (ask != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = ask, style = TnaTypography.AiVoice.copy(fontSize = 12.5.sp, color = Clay.copy(alpha = 0.78f)))
+        }
+    }
+}
+
+/** 环心数值：全局共用 formatDuration（<60「XX分钟」/ ≥60「X小时XX分」），数字大、单位字小一号。 */
+@Composable
+private fun RingValue(minutes: Int) {
+    val s = formatDuration(minutes).ifEmpty { "0分钟" }
+    val text = buildAnnotatedString {
+        s.forEach { c ->
+            if (c.isDigit()) {
+                withStyle(SpanStyle(fontSize = 30.sp, fontWeight = FontWeight.Medium)) { append(c) }
+            } else {
+                withStyle(SpanStyle(fontSize = 14.sp, color = Clay.copy(alpha = 0.66f))) { append(c) }
+            }
+        }
+    }
+    Text(text = text, style = TnaTypography.Mono.copy(color = Clay))
+}
+
+/**
+ * 环后常驻柔光(Loora 暖版):径向暖晕,约环径 1.5 倍,7s 轻呼吸(opacity .75⟷1 + scale .96⟷1.03)。
+ * 性能红线:用 Canvas radialGradient 一次性绘制,**不用运行时 blur**;克制、不抢星环。
+ */
+@Composable
+private fun RingSoftGlow() {
+    val infinite = rememberInfiniteTransition(label = "ringglow")
+    val scale by infinite.animateFloat(0.96f, 1.03f, infiniteRepeatable(tween(3500), RepeatMode.Reverse), label = "gscale")
+    val glowAlpha by infinite.animateFloat(0.75f, 1f, infiniteRepeatable(tween(3500), RepeatMode.Reverse), label = "galpha")
+    Canvas(modifier = Modifier.size(300.dp)) {
+        val r = size.minDimension / 2f * scale
+        drawCircle(
+            brush = Brush.radialGradient(
+                colorStops = arrayOf(
+                    0f to Color(0.906f, 0.667f, 0.424f, 0.34f * glowAlpha),
+                    0.55f to Color(0.906f, 0.667f, 0.424f, 0.14f * glowAlpha),
+                    0.75f to Color(0.906f, 0.667f, 0.424f, 0f),
+                ),
+                center = center,
+                radius = r,
+            ),
+            radius = r,
+            center = center,
         )
     }
 }
 
-/** 小字副标题（距开始/距结束/快到时间了/该收尾了？）。 */
+/** 小字副标题（距开始/距结束/快到时间了/超过）。 */
 @Composable
 private fun RingSub(text: String, near: Boolean) {
     Text(
