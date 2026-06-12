@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="capture"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_capture_short"
+        android:shortcutLongLabel="@string/sc_capture_long">
+        <intent
+            android:action="com.thinkandact.action.CAPTURE"
+            android:targetPackage="com.thinkandact.app"
+            android:targetClass="com.thinkandact.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="inbox"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_inbox_short"
+        android:shortcutLongLabel="@string/sc_inbox_long">
+        <intent
+            android:action="com.thinkandact.action.INBOX"
+            android:targetPackage="com.thinkandact.app"
+            android:targetClass="com.thinkandact.app.MainActivity" />
+    </shortcut>
+</shortcuts>

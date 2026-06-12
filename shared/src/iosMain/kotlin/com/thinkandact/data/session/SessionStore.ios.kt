@@ -6,6 +6,9 @@ import platform.Foundation.NSUserDefaults
 class IosSessionStore : SessionStore {
     private val defaults = NSUserDefaults.standardUserDefaults
 
+    // 桌面小组件(WidgetKit 扩展)是独立进程,读不到 standardUserDefaults;把 token/userId 镜像到 App Group 共享区。
+    private val shared = NSUserDefaults(suiteName = "group.com.thinkandact.iosApp")
+
     override fun load(): SupabaseSession? {
         val accessToken = defaults.stringForKey(KEY_ACCESS_TOKEN)?.takeIf { it.isNotBlank() }
             ?: return null
@@ -24,6 +27,12 @@ class IosSessionStore : SessionStore {
         session.expiresAtMillis?.let { defaults.setObject(NSNumber(longLong = it), KEY_EXPIRES_AT) }
             ?: defaults.removeObjectForKey(KEY_EXPIRES_AT)
         defaults.synchronize()
+        // 镜像给小组件:只需 token + userId。
+        shared?.apply {
+            setObject(session.accessToken, KEY_ACCESS_TOKEN)
+            setObject(session.userId, KEY_USER_ID)
+            synchronize()
+        }
     }
 
     override fun clear() {
@@ -31,6 +40,11 @@ class IosSessionStore : SessionStore {
             defaults.removeObjectForKey(it)
         }
         defaults.synchronize()
+        shared?.apply {
+            removeObjectForKey(KEY_ACCESS_TOKEN)
+            removeObjectForKey(KEY_USER_ID)
+            synchronize()
+        }
     }
 
     private companion object {

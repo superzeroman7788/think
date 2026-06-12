@@ -176,6 +176,18 @@ data class TaskPlannedStartUpdateDto(
     @SerialName("planned_start") val plannedStart: String,
 )
 
+/** 完整计划页「改标题」(F7-03 点选编辑)。 */
+@Serializable
+data class TaskTitleUpdateDto(val title: String)
+
+/** 完整计划页「改时长」(分钟,F7-03 点选编辑)。 */
+@Serializable
+data class TaskDurationUpdateDto(@SerialName("planned_duration") val plannedDuration: Int)
+
+/** 完整计划页「★ 重要」开关(F7-03 点选编辑)。 */
+@Serializable
+data class TaskImportantUpdateDto(val important: Boolean)
+
 // ── 块二 日内重排 /plan-revise（契约 v1.1）──────────────────────────────
 
 @Serializable
@@ -224,6 +236,13 @@ data class PlanReviseResponse(
     val applicable: Boolean = true,
     /** v1.3：applicable=false 时后端必填的人话拒绝原因;FE 必须照实展示,**不得**用固定「没听出」覆盖。 */
     @SerialName("reject_reason") val rejectReason: String? = null,
+    /** v2：bootstrap=空计划新建 / revise=改已有 / clarify=需追问 */
+    val intent: PlanReviseIntentDto? = null,
+)
+
+@Serializable
+data class PlanReviseIntentDto(
+    val mode: String = "revise",
 )
 
 @Serializable

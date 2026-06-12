@@ -57,6 +57,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.thinkandact.core.time.addedDiffDetail
+import com.thinkandact.core.time.reviseDiffDetail
 import com.thinkandact.data.remote.AddedReviseDto
 import com.thinkandact.data.remote.RevisionDto
 import com.thinkandact.data.remote.TaskRowDto
@@ -101,6 +103,7 @@ fun ExecutionScreen(
     var fbVisible by remember { mutableStateOf(false) }
     var fbArmed by remember { mutableStateOf(false) }
     var barCenterY by remember { mutableStateOf(0f) } // 量「想调整」语音条中心 → 反馈层就地盖住它
+    var showReviseType by remember { mutableStateOf(false) } // F7-03 轻点打字
 
     // ★ 系统提醒:首次进执行屏申请通知权限 + 国内 OEM 白名单引导(只一次)。
     val notifPerm = com.thinkandact.reminders.rememberNotificationPermission()
@@ -184,7 +187,7 @@ fun ExecutionScreen(
                 onRevisePressStart = onRevisePressStart,
                 onRevisePressEnd = onRevisePressEnd,
                 onDismissReviseHint = viewModel::dismissReviseHint,
-                onReviseTap = viewModel::onReviseTap,
+                onReviseTap = { showReviseType = true },
                 onRevisePressDown = { fbVisible = true },
                 onRevisePressUp = { fbVisible = false; fbArmed = false },
                 onReviseCancel = viewModel::cancelReviseVoice,
@@ -237,6 +240,15 @@ fun ExecutionScreen(
                 onDismiss = { viewModel.markBgGuideShown(); showBgGuide = false },
             )
         }
+    }
+
+    if (showReviseType) {
+        com.thinkandact.ui.common.TypeInputDialog(
+            title = "改今天",
+            placeholder = "打字说说怎么改,比如「3 点的会推到 4 点」",
+            onDismiss = { showReviseType = false },
+            onSubmit = { showReviseType = false; viewModel.reviseFromText(it) },
+        )
     }
 
     state.proposal?.let { proposal ->
@@ -719,9 +731,8 @@ private fun AddedRow(a: AddedReviseDto) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = a.title, style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.SemiBold))
-            val time = a.plannedStart.formatTime()
             Text(
-                text = if (time != "--:--") "新增 · $time" else "新增到今天的安排",
+                text = addedDiffDetail(a.plannedStart, a.plannedDuration, a.kind == "point"),
                 modifier = Modifier.padding(top = 3.dp),
                 style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep),
             )
@@ -738,11 +749,11 @@ private fun DiffRow(r: RevisionDto) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = r.title, style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.SemiBold))
-            val detail = when (r.change) {
-                "moved" -> "${r.before.plannedStart.formatTime()} → ${r.after.plannedStart.formatTime()}"
-                "dropped" -> "不做了"
-                else -> ""
-            }
+            val detail = reviseDiffDetail(
+                r.change,
+                r.before.plannedStart, r.before.plannedDuration,
+                r.after.plannedStart, r.after.plannedDuration,
+            )
             if (detail.isNotBlank()) {
                 Text(text = detail, modifier = Modifier.padding(top = 3.dp), style = TnaTypography.Mono.copy(color = if (r.change == "dropped") TnaColors.Muted else TnaColors.AccentDeep))
             }
@@ -752,16 +763,6 @@ private fun DiffRow(r: RevisionDto) {
             style = TnaTypography.Body.copy(color = if (r.change == "dropped") TnaColors.Muted else TnaColors.Accent, fontWeight = FontWeight.Bold),
         )
     }
-}
-
-private fun String?.formatTime(): String {
-    if (this.isNullOrBlank()) return "--:--"
-    val raw = trim()
-    if (raw.matches(Regex("^\\d{2}:\\d{2}(:\\d{2})?$"))) return raw.take(5)
-    return runCatching {
-        val dt = Instant.parse(raw).toLocalDateTime(TimeZone.currentSystemDefault())
-        dt.hour.toString().padStart(2, '0') + ":" + dt.minute.toString().padStart(2, '0')
-    }.getOrElse { raw.substringAfter("T", raw).take(5).ifBlank { "--:--" } }
 }
 
 /** ★ 提醒白名单引导(一次性、温和、不说教)。 */

@@ -24,6 +24,7 @@ import com.thinkandact.data.session.SessionStore
 import com.thinkandact.data.session.SupabaseSession
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -36,6 +37,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -48,10 +50,24 @@ class PlanRepository(
     private val sessionState: com.thinkandact.data.session.SessionState,
 ) {
     suspend fun generatePlan(rawInput: String): PlanGenerateResponseDto {
+        return try {
+            withTimeout(PLAN_GENERATE_TIMEOUT_MS) {
+                generatePlanOnce(rawInput)
+            }
+        } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+            throw IllegalStateException("plan-generate timeout after ${PLAN_GENERATE_TIMEOUT_MS / 1000}s")
+        }
+    }
+
+    private suspend fun generatePlanOnce(rawInput: String): PlanGenerateResponseDto {
         val session = ensureSession()
         val response = httpClient.post("${SupabaseConfig.URL}/functions/v1/plan-generate") {
             supabaseHeaders(session.accessToken)
             contentType(ContentType.Application.Json)
+            timeout {
+                requestTimeoutMillis = PLAN_GENERATE_TIMEOUT_MS
+                socketTimeoutMillis = PLAN_GENERATE_TIMEOUT_MS
+            }
             setBody(
                 PlanGenerateRequest(
                     date = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString(),
@@ -261,6 +277,61 @@ class PlanRepository(
         }
     }
 
+    /** F7-03 点选编辑「改标题」：PATCH title。 */
+    suspend fun updateTaskTitle(id: String, title: String) {
+        val session = ensureSession()
+        val response = httpClient.patch(taskByIdUrl(id)) {
+            supabaseHeaders(session.accessToken)
+            header("Prefer", "return=minimal")
+            contentType(ContentType.Application.Json)
+            setBody(com.thinkandact.data.remote.TaskTitleUpdateDto(title = title))
+        }
+        if (!response.status.isSuccess()) throw IllegalStateException(response.bodyAsText().ifBlank { "Task title update failed." })
+    }
+
+    /** F7-03 点选编辑「改时长」：PATCH planned_duration(分钟)。 */
+    suspend fun updateTaskDuration(id: String, minutes: Int) {
+        val session = ensureSession()
+        val response = httpClient.patch(taskByIdUrl(id)) {
+            supabaseHeaders(session.accessToken)
+            header("Prefer", "return=minimal")
+            contentType(ContentType.Application.Json)
+            setBody(com.thinkandact.data.remote.TaskDurationUpdateDto(plannedDuration = minutes))
+        }
+        if (!response.status.isSuccess()) throw IllegalStateException(response.bodyAsText().ifBlank { "Task duration update failed." })
+    }
+
+    /** F7-03 点选编辑「★ 重要」开关：PATCH important。 */
+    suspend fun updateTaskImportant(id: String, important: Boolean) {
+        val session = ensureSession()
+        val response = httpClient.patch(taskByIdUrl(id)) {
+            supabaseHeaders(session.accessToken)
+            header("Prefer", "return=minimal")
+            contentType(ContentType.Application.Json)
+            setBody(com.thinkandact.data.remote.TaskImportantUpdateDto(important = important))
+        }
+        if (!response.status.isSuccess()) throw IllegalStateException(response.bodyAsText().ifBlank { "Task important update failed." })
+    }
+
+    /** F7-03 完整计划页「+ 加一项 / + 加时刻点」：直接往今天插一条真任务。point → planned_duration=0。 */
+    suspend fun addTaskToday(title: String, plannedStartIso: String?, plannedDuration: Int, important: Boolean, kind: String): TaskRowDto {
+        val session = ensureSession()
+        val userId = session.userId?.takeIf { it.isNotBlank() } ?: throw IllegalStateException("Missing user id for add task.")
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val row = TaskInsertDto(
+            userId = userId,
+            date = today,
+            title = title,
+            plannedStart = plannedStartIso,
+            plannedDuration = if (kind == "point") 0 else plannedDuration,
+            important = important,
+            source = "user_text",
+            status = "planned",
+            kind = kind,
+        )
+        return insertTasks(session, listOf(row)).first()
+    }
+
     /** 软建议「加入」→ 升级真任务：status=planned（不改 source）。 */
     suspend fun markTaskPlanned(id: String) {
         val session = ensureSession()
@@ -446,6 +517,8 @@ class PlanRepository(
 
     private companion object {
         const val SESSION_EXPIRY_BUFFER_MS = 60_000L
+        /** plan-generate 含 LLM 多轮 JSON 重试,比全局 HTTP 40s 更宽。 */
+        const val PLAN_GENERATE_TIMEOUT_MS = 120_000L
     }
 }
 

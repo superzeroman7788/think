@@ -8,8 +8,10 @@ import com.thinkandact.data.remote.PlanTaskDto
 import com.thinkandact.voice.AsrEvent
 import com.thinkandact.voice.VoiceInputService
 import com.thinkandact.voice.VoiceLatencyTracker
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -37,6 +39,7 @@ class MorningViewModel(
     val amp get() = voiceInputService.amp
 
     private var voiceJob: Job? = null
+    private var generateJob: Job? = null
     /** 录音前输入框已有的文字；转写实时拼在它后面。 */
     private var voiceBaseText: String = ""
     /** 已定稿的转写句子累计。 */
@@ -183,6 +186,15 @@ class MorningViewModel(
         stopVoiceInput()
     }
 
+    /** F7-03 计划页轻点打字调整:把这句并进 rawInput 再重排(与"按住说话调整"等价)。 */
+    fun regenerateFromText(text: String) {
+        val t = text.trim()
+        if (t.isBlank() || uiState.value.isLoading || uiState.value.isRecording) return
+        val base = uiState.value.rawInput.trimEnd()
+        _uiState.update { it.copy(rawInput = if (base.isBlank()) t else "$base\n$t") }
+        generatePlan()
+    }
+
     /** 上滑取消区松手:中止录音、不重排、不入框，整段丢弃。 */
     fun cancelVoiceInput() {
         regenerateAfterVoice = false
@@ -209,6 +221,7 @@ class MorningViewModel(
 
     override fun onCleared() {
         voiceJob?.cancel()
+        generateJob?.cancel()
         super.onCleared()
     }
 
@@ -217,28 +230,45 @@ class MorningViewModel(
         if (input.isEmpty()) return
         if (uiState.value.isLoading) return // BUG-06 防抖：生成中再点忽略,别双倍消耗 AI / 竞态覆盖
 
-        viewModelScope.launch {
+        generateJob?.cancel()
+        generateJob = viewModelScope.launch {
+            val thisJob = coroutineContext[Job]!!
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching { planRepository.generatePlan(input) }
-                .onSuccess { plan ->
-                    val merged = mergeManualTasks(plan.toEditableTasks(), uiState.value.editableTasks)
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            proposal = plan,
-                            editableTasks = merged,
-                            isConfirmed = false,
-                            saveErrorMessage = null,
-                            errorMessage = null,
-                            addTaskMessage = null,
-                        )
-                    }
+            try {
+                val plan = planRepository.generatePlan(input)
+                val merged = mergeManualTasks(plan.toEditableTasks(), uiState.value.editableTasks)
+                _uiState.update { state ->
+                    state.copy(
+                        proposal = plan,
+                        editableTasks = merged,
+                        isConfirmed = false,
+                        saveErrorMessage = null,
+                        errorMessage = null,
+                        addTaskMessage = null,
+                    )
                 }
-                .onFailure { throwable ->
-                    com.thinkandact.core.debug.FeDebug.raw(com.thinkandact.core.debug.FeDebug.Layer.NETWORK, "/plan-generate 异常: ${throwable.message ?: throwable}")
-                    _uiState.update { it.copy(isLoading = false, errorMessage = throwable.friendlyMessage()) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                com.thinkandact.core.debug.FeDebug.raw(
+                    com.thinkandact.core.debug.FeDebug.Layer.NETWORK,
+                    "/plan-generate 异常: ${t.message ?: t}",
+                )
+                _uiState.update { it.copy(errorMessage = t.friendlyMessage()) }
+            } finally {
+                if (generateJob === thisJob) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    generateJob = null
                 }
+            }
         }
+    }
+
+    /** 生成中用户点「取消」→ 中止请求并回到输入/草案页。 */
+    fun cancelGeneratePlan() {
+        generateJob?.cancel()
+        generateJob = null
+        _uiState.update { it.copy(isLoading = false) }
     }
 
     fun retry() = generatePlan()

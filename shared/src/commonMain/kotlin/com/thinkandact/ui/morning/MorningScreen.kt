@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.thinkandact.core.time.formatTimeRange
 import com.thinkandact.ui.common.BrandWordmark
 import com.thinkandact.ui.common.SectionLabel
 import com.thinkandact.ui.common.TnaButton
@@ -86,6 +88,7 @@ fun MorningScreen(
     onOpenRoutines: () -> Unit,
     onOpenExecution: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     /** 确认计划后进入「今天」——与顶部「今天→」peek 区分:确认后 morning 不再留在返回栈(确认完无需再回)。 */
     onPlanConfirmed: () -> Unit = onOpenExecution,
     viewModel: MorningViewModel = koinViewModel()
@@ -93,6 +96,7 @@ fun MorningScreen(
     val state by viewModel.uiState.collectAsState()
     var editingTimeTask by remember { mutableStateOf<EditablePlanTask?>(null) }
     var showAddTask by remember { mutableStateOf(false) }
+    var showAdjustType by remember { mutableStateOf(false) } // F7-03 计划页轻点打字调整
 
     // 确认计划后直接进「今天」(bug:原来停在一个无意义的"已确认"页);morning 退出返回栈。
     LaunchedEffect(state.isConfirmed) {
@@ -152,7 +156,7 @@ fun MorningScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(10.dp))
-            MorningHeader(onOpenRoutines = onOpenRoutines, onOpenExecution = onOpenExecution, onOpenHistory = onOpenHistory)
+            MorningHeader(onOpenRoutines = onOpenRoutines, onOpenExecution = onOpenExecution, onOpenHistory = onOpenHistory, onOpenSettings = onOpenSettings)
 
             // 早上浮现（§三）：到日子了的收件箱召回卡。
             if (state.recallItems.isNotEmpty()) {
@@ -170,7 +174,10 @@ fun MorningScreen(
             when {
                 // 生成 / 重新生成中：优先显示加载提示。重排时（已有 proposal）给出
                 // 「正在帮你改今天」的话术，让用户知道这次语音调整收到了、正在处理。
-                state.isLoading -> LoadingContent(isAdjusting = state.proposal != null)
+                state.isLoading -> LoadingContent(
+                    isAdjusting = state.proposal != null,
+                    onCancel = viewModel::cancelGeneratePlan,
+                )
                 state.proposal != null -> ProposalContent(
                     tasks = state.editableTasks,
                     aiComment = state.proposal!!.aiComment,
@@ -220,6 +227,7 @@ fun MorningScreen(
                 voiceSpokenText = state.voiceSpokenText,
                 onMicPressStart = onMicPressStart,
                 onAdjustPressEnd = onAdjustPressEnd,
+                onAdjustTap = { showAdjustType = true },
                 onLooksGood = onConfirmPlan,
                 onPressDown = onFbDown,
                 onPressUp = onFbUp,
@@ -251,6 +259,16 @@ fun MorningScreen(
             onConfirm = { title, hour, minute ->
                 if (viewModel.addTask(title, hour, minute)) showAddTask = false
             }
+        )
+    }
+
+    if (showAdjustType) {
+        com.thinkandact.ui.common.TypeInputDialog(
+            title = "想调整？打字告诉我",
+            placeholder = "比如「把跑步换到晚上」「上午多留点时间」",
+            onDismiss = { showAdjustType = false },
+            onSubmit = { showAdjustType = false; viewModel.regenerateFromText(it) },
+            submitLabel = "重新生成",
         )
     }
 
@@ -286,9 +304,26 @@ fun MorningScreen(
 }
 
 @Composable
-private fun MorningHeader(onOpenRoutines: () -> Unit, onOpenExecution: () -> Unit, onOpenHistory: () -> Unit = {}) {
+private fun MorningHeader(onOpenRoutines: () -> Unit, onOpenExecution: () -> Unit, onOpenHistory: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         BrandWordmark(modifier = Modifier.weight(1f))
+        // 设置入口：齿轮图标。
+        Box(
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(38.dp)
+                .background(TnaColors.Surface, RoundedCornerShape(999.dp))
+                .border(1.dp, TnaColors.Line, RoundedCornerShape(999.dp))
+                .clickable(onClick = onOpenSettings),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Settings,
+                contentDescription = "设置",
+                tint = TnaColors.AccentDeep,
+                modifier = Modifier.width(20.dp).height(20.dp),
+            )
+        }
         // 历史视图入口：顶部图表图标。
         Box(
             modifier = Modifier
@@ -460,6 +495,7 @@ private fun VoiceInputRow(
     onCancel: () -> Unit = {},
     onCancelArmedChange: (Boolean) -> Unit = {},
     onBarCenter: (Float) -> Unit = {},
+    onTap: () -> Unit = {},
 ) {
     VoiceMicButton(
         isRecording = isRecording,
@@ -471,6 +507,7 @@ private fun VoiceInputRow(
         onPressUp = onPressUp,
         onCancel = onCancel,
         onCancelArmedChange = onCancelArmedChange,
+        onTap = onTap,
         idleLabel = idleLabel,
         recordingLabel = recordingLabel,
         modifier = modifier.onGloballyPositioned { onBarCenter(it.positionInRoot().y + it.size.height / 2f) },
@@ -547,7 +584,7 @@ private fun VoiceHintPanel(message: String, onDismiss: () -> Unit, modifier: Mod
 }
 
 @Composable
-private fun LoadingContent(isAdjusting: Boolean = false) {
+private fun LoadingContent(isAdjusting: Boolean = false, onCancel: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 54.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -558,6 +595,12 @@ private fun LoadingContent(isAdjusting: Boolean = false) {
             modifier = Modifier.padding(top = 18.dp),
             style = TnaTypography.AiVoice,
             textAlign = TextAlign.Center
+        )
+        TnaButton(
+            text = "取消",
+            onClick = onCancel,
+            style = TnaButtonStyle.Secondary,
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
         )
     }
 }
@@ -589,7 +632,7 @@ private fun ProposalContent(
         MorningTaskCard(
             taskId = item.id,
             title = item.task.title,
-            time = item.task.plannedStart.formatTime(),
+            time = formatTimeRange(item.task.plannedStart, item.task.plannedDuration, item.task.kind == "point").ifEmpty { "--:--" },
             note = item.task.note,
             important = item.task.important,
             // v1.4:软=未接受(status=suggested);加入后 status=planned → 不再软。旧数据兜底:ai_suggestion 仍非 planned。
@@ -911,6 +954,7 @@ private fun ProposalFooter(
     voiceSpokenText: String,
     onMicPressStart: suspend () -> Unit,
     onAdjustPressEnd: () -> Unit,
+    onAdjustTap: () -> Unit = {},
     onLooksGood: () -> Unit,
     onPressDown: () -> Unit = {},
     onPressUp: () -> Unit = {},
@@ -946,6 +990,7 @@ private fun ProposalFooter(
                 onCancel = onCancel,
                 onCancelArmedChange = onCancelArmedChange,
                 onBarCenter = onBarCenter,
+                onTap = onAdjustTap,
                 idleLabel = "想调整？按住说话告诉我",
                 recordingLabel = "在听,说吧 · 松开重新生成"
             )
@@ -1016,16 +1061,6 @@ private fun Modifier.dashedCardBorder(): Modifier = this
         )
     }
 
-private fun String?.formatTime(): String {
-    if (this.isNullOrBlank()) return "--:--"
-    val raw = trim()
-    if (raw.matches(Regex("^\\d{2}:\\d{2}(:\\d{2})?$"))) return raw.take(5)
-    return runCatching {
-        val instant = Instant.parse(raw)
-        val localDt = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-        localDt.hour.toString().padStart(2, '0') + ":" + localDt.minute.toString().padStart(2, '0')
-    }.getOrElse { raw.substringAfter("T", raw).take(5).ifBlank { "--:--" } }
-}
 
 private fun String?.toMinutesOfDayOrDefault(): Int {
     if (this.isNullOrBlank()) return 9 * 60

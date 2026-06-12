@@ -11,4 +11,6 @@ import org.koin.dsl.module
 actual fun platformModule(): Module = module {
     single<SessionStore> { AndroidSessionStore(androidContext()) }
     single<ReminderScheduler> { AndroidReminderScheduler(androidContext()) }
+    single<com.thinkandact.calendar.SettingsStore> { com.thinkandact.calendar.AndroidSettingsStore(androidContext()) }
+    single<com.thinkandact.calendar.CalendarSync> { com.thinkandact.calendar.AndroidCalendarSync(androidContext()) }
 }

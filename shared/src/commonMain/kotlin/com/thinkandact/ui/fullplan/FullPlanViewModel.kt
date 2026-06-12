@@ -80,6 +80,35 @@ class FullPlanViewModel(
     fun updateTime(id: String, hour: Int, minute: Int) = patch(id) {
         planRepository.updateTaskPlannedStart(it, todayIsoAt(hour, minute))
     }
+    /** F7-03 点选编辑弹窗「保存」：标题 / 时间 / 时长 / ★ 一次改完,只改有变化的字段,最后刷一次。 */
+    fun editTask(id: String, title: String, hour: Int, minute: Int, durationMin: Int, important: Boolean, isPoint: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                val cur = uiState.value.tasks.firstOrNull { it.id == id }
+                val t = title.trim()
+                if (cur != null && t.isNotBlank() && t != cur.title) planRepository.updateTaskTitle(id, t)
+                planRepository.updateTaskPlannedStart(id, todayIsoAt(hour, minute))
+                if (!isPoint) planRepository.updateTaskDuration(id, durationMin.coerceAtLeast(1))
+                if (cur != null && important != cur.important) planRepository.updateTaskImportant(id, important)
+            }.onSuccess { load() }
+                .onFailure { e -> _uiState.update { it.copy(errorMessage = e.message ?: "改这一下没存上,再试一次。") } }
+        }
+    }
+
+    // F7-03「+ 加一项 / + 加时刻点」：插一条真任务后刷新。
+    fun addTask(title: String, hour: Int, minute: Int, important: Boolean, durationMin: Int = 30) =
+        add(title, hour, minute, important, durationMin, "block")
+    fun addPoint(title: String, hour: Int, minute: Int) = add(title, hour, minute, false, 0, "point")
+
+    private fun add(title: String, hour: Int, minute: Int, important: Boolean, durationMin: Int, kind: String) {
+        val t = title.trim()
+        if (t.isBlank()) return
+        viewModelScope.launch {
+            runCatching { planRepository.addTaskToday(t, todayIsoAt(hour, minute), durationMin, important, kind) }
+                .onSuccess { load() }
+                .onFailure { e -> _uiState.update { it.copy(errorMessage = e.message ?: "加这一项没存上,再试一次。") } }
+        }
+    }
 
     private fun patch(id: String, op: suspend (String) -> Unit) {
         viewModelScope.launch {
@@ -91,6 +120,13 @@ class FullPlanViewModel(
 
     // ── 底部语音改今天（plan-revise，复用 + 秒应）────────────────────────
     fun onReviseTap() { if (!uiState.value.isRecording && !uiState.value.isProposing) _uiState.update { it.copy(reviseHint = "按住这条说一句,改今天。") } }
+
+    /** F7-03 轻点打字:与语音同一根管子(propose)。 */
+    fun reviseFromText(text: String) {
+        val t = text.trim()
+        if (t.isBlank() || uiState.value.isRecording || uiState.value.isProposing || uiState.value.proposal != null) return
+        propose(t)
+    }
 
     fun startReviseVoice() {
         val s = uiState.value

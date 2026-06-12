@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.thinkandact.core.time.formatTimeRange
 import com.thinkandact.data.remote.ReviewParseResponse
 import com.thinkandact.data.remote.TaskRowDto
 import com.thinkandact.ui.common.PressFeedbackOverlay
@@ -83,6 +84,7 @@ fun ReviewScreen(
     var fbVisible by remember { mutableStateOf(false) }
     var fbArmed by remember { mutableStateOf(false) }
     var barCenterY by remember { mutableStateOf(0f) } // 量底部语音条中心 → 反馈层就地盖住它
+    var showReviseType by remember { mutableStateOf(false) } // F7-03 轻点打字
 
     // bug8:白天(未到复盘时段)进来,先给「今天的变化」小结。
     val nowHour = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour }
@@ -187,7 +189,7 @@ fun ReviewScreen(
                     isFinalizing = state.isFinalizing,
                     onPressStart = onVoiceStart,
                     onPressEnd = viewModel::stopVoice,
-                    onTap = viewModel::onVoiceTap,
+                    onTap = { showReviseType = true },
                     onPressDown = { fbVisible = true },
                     onPressUp = { fbVisible = false; fbArmed = false },
                     onCancel = viewModel::cancelVoice,
@@ -216,6 +218,15 @@ fun ReviewScreen(
                 isApplying = state.isApplying,
                 onCancel = viewModel::cancelParse,
                 onApply = viewModel::applyParse,
+            )
+        }
+
+        if (showReviseType) {
+            com.thinkandact.ui.common.TypeInputDialog(
+                title = "改今天",
+                placeholder = "打字说说哪件做了/没做/改了",
+                onDismiss = { showReviseType = false },
+                onSubmit = { showReviseType = false; viewModel.reviseFromText(it) },
             )
         }
 
@@ -347,8 +358,8 @@ private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit, onLongClick: ((
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(task.title, style = TnaTypography.Body.copy(color = if (dropped) TnaColors.Muted else TnaColors.Ink, fontWeight = FontWeight.SemiBold))
-            val time = task.plannedStart.formatTime()
-            if (time != "--:--") Text(time, modifier = Modifier.padding(top = 2.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+            val time = formatTimeRange(task.plannedStart, task.plannedDuration, task.kind == "point")
+            if (time.isNotEmpty()) Text(time, modifier = Modifier.padding(top = 2.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         }
         Box(modifier = Modifier.background(color.copy(alpha = 0.16f), RoundedCornerShape(999.dp)).padding(horizontal = 12.dp, vertical = 5.dp)) {
             Text(label, style = TnaTypography.Mono.copy(color = color))
@@ -408,9 +419,3 @@ private fun ChangeRow(name: String, detail: String, accent: Boolean = false) {
     }
 }
 
-private fun String?.formatTime(): String {
-    if (this.isNullOrBlank()) return "--:--"
-    val instant = runCatching { Instant.parse(this) }.getOrNull() ?: return "--:--"
-    val lt = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${lt.hour.toString().padStart(2, '0')}:${lt.minute.toString().padStart(2, '0')}"
-}

@@ -35,6 +35,7 @@ class ExecutionViewModel(
     private val voiceInputService: VoiceInputService,
     private val reminderScheduler: com.thinkandact.reminders.ReminderScheduler,
     private val inboxRepository: com.thinkandact.data.InboxRepository,
+    private val calendarSyncManager: com.thinkandact.calendar.CalendarSyncManager,
 ) : ViewModel() {
 
     /** 收件箱角标(顶栏):pending 且 due ≤ 今天。每次 load 刷新。 */
@@ -45,10 +46,11 @@ class ExecutionViewModel(
         }
     }
 
-    /** ★ 任务系统提醒:每次任务集变化都整组重排(仅 ★+planned+未来)。 */
+    /** ★ 任务系统提醒 + 系统日历(§四):每次任务集变化都整组重排/对账。 */
     private fun syncReminders() {
         val now = Clock.System.now().toEpochMilliseconds()
         reminderScheduler.sync(com.thinkandact.reminders.ReminderPlanner.fromTasks(uiState.value.tasks, now))
+        calendarSyncManager.syncIfEnabled(uiState.value.tasks) // §四：★ 任务同步系统日历(开关开时)
     }
 
     fun shouldShowBgGuide() = reminderScheduler.shouldShowBackgroundGuide()
@@ -257,6 +259,14 @@ class ExecutionViewModel(
     fun onReviseTap() {
         if (uiState.value.isReviseRecording || uiState.value.isProposing) return
         _uiState.update { it.copy(reviseHint = "按住这条说话,松手我就帮你改今天。") }
+    }
+
+    /** F7-03 轻点打字:与语音同一根管子(propose),识别不准/不便说话时的手动出路。 */
+    fun reviseFromText(text: String) {
+        val t = text.trim()
+        if (t.isBlank() || uiState.value.isReviseRecording || uiState.value.isProposing || uiState.value.proposal != null) return
+        lastInstruction = t
+        propose(t)
     }
 
     fun startReviseVoice() {
@@ -475,6 +485,12 @@ class ExecutionViewModel(
                 "现在网络不太稳,等会儿再调。"
             raw.contains("FAIR_USE", ignoreCase = true) || raw.contains("429") ->
                 "今天的次数用完了,先按现在的来。"
+            raw.contains("INVALID_REQUEST", ignoreCase = true) ->
+                "今天还没有安排。可以说「今天交电费、下午开会」,我帮你加进计划。"
+            raw.contains("NEEDS_CLARIFICATION", ignoreCase = true) ->
+                Regex(""""message"\s*:\s*"((?:\\.|[^"\\])*)"""").find(raw)?.groupValues?.get(1)
+                    ?.replace("\\\"", "\"")?.replace("\\\\", "\\")
+                    ?: "今天大概要忙点什么？随便说两句就行。"
             else -> "没排成功,先按现在的来。"
         }
     }

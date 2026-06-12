@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.thinkandact.core.time.formatTimeRange
 import com.thinkandact.data.remote.TaskRowDto
 import com.thinkandact.ui.theme.TnaColors
 import com.thinkandact.ui.theme.TnaTypography
@@ -226,7 +227,7 @@ private fun TaskDetailRow(t: TaskRowDto) {
         else -> Triple("未做", Color.White, TnaColors.Muted)
     }
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(t.plannedStart.hhmm(), modifier = Modifier.width(46.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+        Text(formatTimeRange(t.plannedStart, t.plannedDuration, t.kind == "point"), modifier = Modifier.width(84.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         Text(t.title, modifier = Modifier.weight(1f), style = TnaTypography.Body.copy(color = if (t.status == "skipped") TnaColors.Muted else TnaColors.Ink))
         Box(modifier = Modifier.background(bg, RoundedCornerShape(999.dp)).then(if (t.status == "planned") Modifier.border(1.dp, Color(0xFFE7DACE), RoundedCornerShape(999.dp)) else Modifier).padding(horizontal = 10.dp, vertical = 3.dp)) {
             Text(label, style = TnaTypography.Mono.copy(color = fg))
@@ -247,9 +248,3 @@ private fun oneLine(day: HistoryDay): String {
     }
 }
 
-private fun String?.hhmm(): String {
-    if (this.isNullOrBlank()) return "--:--"
-    val i = runCatching { Instant.parse(this) }.getOrNull() ?: return "--:--"
-    val lt = i.toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${lt.hour.toString().padStart(2, '0')}:${lt.minute.toString().padStart(2, '0')}"
-}

@@ -197,6 +197,13 @@ class ReviewViewModel(
         parseBatch(text)
     }
 
+    /** F7-03 轻点打字:与语音同一根管子(parseBatch)。 */
+    fun reviseFromText(text: String) {
+        val t = text.trim()
+        if (t.isBlank() || uiState.value.isRecording || uiState.value.isParsing) return
+        parseBatch(t)
+    }
+
     private fun parseBatch(transcript: String) {
         _uiState.update { it.copy(isParsing = true, voiceHint = null) }
         viewModelScope.launch {

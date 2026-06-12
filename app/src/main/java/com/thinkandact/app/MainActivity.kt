@@ -35,5 +35,10 @@ class MainActivity : ComponentActivity() {
             NavSignals.openExecution.value = true
             intent.removeExtra(ReminderReceiver.EXTRA_OPEN_EXECUTION)
         }
+        // 随手记快捷方式 / widget(action 路由)。
+        when (intent?.action) {
+            "com.thinkandact.action.CAPTURE" -> NavSignals.openCapture.value = true
+            "com.thinkandact.action.INBOX" -> NavSignals.openInbox.value = true
+        }
     }
 }

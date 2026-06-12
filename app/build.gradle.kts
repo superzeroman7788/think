@@ -12,8 +12,8 @@ android {
         applicationId = "com.thinkandact.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.1.8"
+        versionCode = 12
+        versionName = "0.1.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -48,6 +48,9 @@ dependencies {
 
     implementation("io.insert-koin:koin-android:4.0.4")
     implementation("io.insert-koin:koin-androidx-compose:4.0.4")
+
+    // 随手记桌面小组件
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

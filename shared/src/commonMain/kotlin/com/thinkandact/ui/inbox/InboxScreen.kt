@@ -64,6 +64,11 @@ fun InboxScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
+    // 快捷方式「记一笔」→ 进收件箱即弹捕捉面板。
+    val openCapture by com.thinkandact.ui.NavSignals.openCapture.collectAsState()
+    LaunchedEffect(openCapture) {
+        if (openCapture) { viewModel.openCapture(); com.thinkandact.ui.NavSignals.openCapture.value = false }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(TnaColors.Background)) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {

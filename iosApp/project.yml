@@ -21,11 +21,16 @@ targets:
     platform: iOS
     sources:
       - path: iosApp
+    dependencies:
+      # 随手记桌面小组件(WidgetKit 扩展),随主 App 一起打包嵌入。
+      - target: InboxWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.thinkandact.iosApp
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: iosApp/iosApp.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
         # 链接 KMP 静态框架 shared.framework（由下方 preBuild 脚本现编现签）。
@@ -44,3 +49,18 @@ targets:
         script: |
           cd "$SRCROOT/.."
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+  # 随手记桌面小组件:纯 SwiftUI/WidgetKit,不链 KMP 框架(直连 Supabase 公开端点)。
+  # 与主 App 通过 App Group 共享登录 token。
+  InboxWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: InboxWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.thinkandact.iosApp.InboxWidget
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: InboxWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: InboxWidget/InboxWidget.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""

@@ -44,6 +44,7 @@ val sharedModule = module {
     single { HistoryRepository(get(), get()) }
     single { InboxRepository(get(), get()) }
     single { AuthRepository(get(), get(), get()) }
+    single { com.thinkandact.calendar.CalendarSyncManager(get(), get()) }
 
     // 语音输入（FE-ASR-1）
     single { AudioRecorder() }
@@ -56,13 +57,14 @@ val sharedModule = module {
 
     viewModel { RoutineViewModel(get(), get()) }
     viewModel { MorningViewModel(get(), get(), get(), get()) }
-    viewModel { ExecutionViewModel(get(), get(), get(), get()) }
+    viewModel { ExecutionViewModel(get(), get(), get(), get(), get()) }
     viewModel { ReviewViewModel(get(), get()) }
     viewModel { HistoryViewModel(get()) }
     viewModel { InboxViewModel(get(), get()) }
     viewModel { FullPlanViewModel(get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
     viewModel { RemindersViewModel(get()) }
+    viewModel { com.thinkandact.ui.settings.SettingsViewModel(get(), get()) }
 }
 
 expect fun platformModule(): Module

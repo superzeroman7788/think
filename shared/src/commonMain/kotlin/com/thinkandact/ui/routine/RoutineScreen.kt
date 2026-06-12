@@ -65,6 +65,7 @@ fun RoutineScreen(
     val state by viewModel.uiState.collectAsState()
     var editingForm by remember { mutableStateOf<RoutineFormState?>(null) }
     var deletingRoutine by remember { mutableStateOf<RoutineDto?>(null) }
+    var showAddType by remember { mutableStateOf(false) } // F7-03 轻点打字加日常
 
     val micController = rememberMicPermissionController()
     // 语音优先：按住→申请权限并开始录音；松开→停止、等 final、再后端解析。
@@ -98,6 +99,7 @@ fun RoutineScreen(
             onPressEnd = onVoicePressEnd,
             onDismissHint = viewModel::dismissVoiceHint,
             onManualAdd = { editingForm = RoutineFormState() },
+            onTap = { showAddType = true },
             modifier = Modifier.padding(top = 14.dp, bottom = 14.dp)
         )
 
@@ -146,6 +148,16 @@ fun RoutineScreen(
             }
         )
     }
+
+    if (showAddType) {
+        com.thinkandact.ui.common.TypeInputDialog(
+            title = "加个日常",
+            placeholder = "比如「每天早上 8 点喝水」",
+            onDismiss = { showAddType = false },
+            onSubmit = { showAddType = false; viewModel.addFromText(it) },
+            submitLabel = "加进来",
+        )
+    }
 }
 
 @Composable
@@ -188,6 +200,7 @@ private fun VoiceCreateCard(
     onPressEnd: () -> Unit,
     onDismissHint: () -> Unit,
     onManualAdd: () -> Unit,
+    onTap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -212,6 +225,7 @@ private fun VoiceCreateCard(
             isFinalizing = isFinalizing,
             onPressStart = onPressStart,
             onPressEnd = onPressEnd,
+            onTap = onTap,
             idleLabel = "按住说话 · 说一句就好",
             recordingLabel = "在听,说吧 · 松开整理"
         )

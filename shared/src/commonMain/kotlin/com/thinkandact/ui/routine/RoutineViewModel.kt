@@ -94,6 +94,14 @@ class RoutineViewModel(
      * 录音收尾完成：转写 → 后端解析 → **直接建好并启用**,刷新列表。
      * 不再弹确认框;建错了用户可在列表里改/删。
      */
+    /** F7-03 轻点打字:与语音同一根管子(解析 → 建日常)。 */
+    fun addFromText(text: String) {
+        val t = text.trim()
+        if (t.isBlank() || uiState.value.isParsing) return
+        _uiState.update { it.copy(voiceTranscript = t) }
+        onCaptureComplete()
+    }
+
     private fun onCaptureComplete() {
         endCapture()
         val text = uiState.value.voiceTranscript.trim()

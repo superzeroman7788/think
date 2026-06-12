@@ -10,4 +10,6 @@ import org.koin.dsl.module
 actual fun platformModule(): Module = module {
     single<SessionStore> { IosSessionStore() }
     single<ReminderScheduler> { IosReminderScheduler() }
+    single<com.thinkandact.calendar.SettingsStore> { com.thinkandact.calendar.IosSettingsStore() }
+    single<com.thinkandact.calendar.CalendarSync> { com.thinkandact.calendar.IosCalendarSync() }
 }

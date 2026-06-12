@@ -44,6 +44,7 @@ sealed class Screen {
     data object History : Screen()
     data object FullPlan : Screen()
     data object Inbox : Screen()
+    data object Settings : Screen()
 }
 
 @Composable
@@ -97,6 +98,15 @@ fun App() {
                 com.thinkandact.ui.NavSignals.openExecution.value = false
             }
         }
+        // 随手记快捷方式/widget → 收件箱(记一笔会进收件箱后由 InboxScreen 弹捕捉面板)。
+        val openInbox by com.thinkandact.ui.NavSignals.openInbox.collectAsState()
+        val openCapture by com.thinkandact.ui.NavSignals.openCapture.collectAsState()
+        LaunchedEffect(openInbox, openCapture) {
+            if (openInbox || openCapture) {
+                navTo(Screen.Inbox)
+                com.thinkandact.ui.NavSignals.openInbox.value = false
+            }
+        }
         val reminders: RemindersViewModel = koinViewModel()
         val activeReminder by reminders.active.collectAsState()
 
@@ -106,6 +116,7 @@ fun App() {
                     onOpenRoutines = { navTo(Screen.Routines) },
                     onOpenExecution = { navTo(Screen.Execution) },
                     onOpenHistory = { navTo(Screen.History) },
+                    onOpenSettings = { navTo(Screen.Settings) },
                     // 确认计划后:重置返回栈为 [今天],morning 不再可回(调整在今天/完整计划页做)。
                     onPlanConfirmed = { backStack.clear(); backStack.add(Screen.Execution) },
                 )
@@ -121,6 +132,7 @@ fun App() {
                 Screen.History -> HistoryScreen(onBack = { goBack() })
                 Screen.FullPlan -> FullPlanScreen(onBack = { goBack() })
                 Screen.Inbox -> com.thinkandact.ui.inbox.InboxScreen(onBack = { goBack() })
+                Screen.Settings -> com.thinkandact.ui.settings.SettingsScreen(onBack = { goBack() })
             }
 
             // 块三：普通任务到点的 App 内横幅,浮在当前屏顶部。
