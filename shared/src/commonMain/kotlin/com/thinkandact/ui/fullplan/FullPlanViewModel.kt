@@ -77,6 +77,9 @@ class FullPlanViewModel(
     }
     fun markSkip(id: String) = patch(id) { planRepository.markTaskSkipped(it) }
     fun acceptSuggestion(id: String) = patch(id) { planRepository.markTaskPlanned(it) }
+    // B6-04:点选删除 → 软删消失;跳过任务「恢复(撤销跳过)」→ 回 planned。
+    fun deleteTask(id: String) = patch(id) { planRepository.softDeleteTask(it) }
+    fun restoreTask(id: String) = patch(id) { planRepository.markTaskPlanned(it) }
     fun updateTime(id: String, hour: Int, minute: Int) = patch(id) {
         planRepository.updateTaskPlannedStart(it, todayIsoAt(hour, minute))
     }
@@ -177,7 +180,9 @@ class FullPlanViewModel(
             val revisable = uiState.value.tasks.filter { it.status != "suggested" }
             runCatching { planRepository.proposeRevision(instruction, revisable) }
                 .onSuccess { p ->
-                    val hasChange = p.revisions.any { it.change == "moved" || it.change == "dropped" } || p.added.isNotEmpty()
+                    val hasChange = p.revisions.any {
+                        it.change in setOf("moved", "skip", "delete", "dropped")
+                    } || p.added.isNotEmpty()
                     if (!hasChange) {
                         val reason = p.rejectReason?.takeIf { it.isNotBlank() } ?: p.warnings.firstOrNull()?.takeIf { it.isNotBlank() }
                         if (reason == null) com.thinkandact.core.debug.FeDebug.reject("propose 无操作且无 reject_reason", instruction)
@@ -196,7 +201,8 @@ class FullPlanViewModel(
         val applyList = p.revisions.mapNotNull { r ->
             when (r.change) {
                 "moved" -> ApplyRevisionDto(r.taskId, "moved", ApplyAfterDto(plannedStart = r.after.plannedStart, plannedDuration = r.after.plannedDuration, status = "planned"))
-                "dropped" -> ApplyRevisionDto(r.taskId, "dropped", ApplyAfterDto(status = "dropped"))
+                "skip", "dropped" -> ApplyRevisionDto(r.taskId, "skip", ApplyAfterDto(status = "skipped"))
+                "delete" -> ApplyRevisionDto(r.taskId, "delete", ApplyAfterDto(status = "deleted"))
                 else -> null
             }
         }

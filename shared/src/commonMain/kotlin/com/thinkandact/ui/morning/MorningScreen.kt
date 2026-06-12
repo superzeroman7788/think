@@ -207,6 +207,8 @@ fun MorningScreen(
                 )
                 Spacer(modifier = Modifier.height(18.dp))
             }
+            // B6-03 硬门:今天已有确认计划 → 不展示生成流,引导去「改今天」。
+            state.todayHasPlan -> PlanExistsGate(modifier = Modifier.weight(1f), onGoToToday = onOpenExecution)
             // 输入页(改版):输入框=主角占满,标题/副标在上,语音条+生成今天钉底。
             else -> EntryContent(
                 modifier = Modifier.weight(1f),
@@ -371,6 +373,26 @@ private fun recallPrefix(createdAt: String?): String {
         ?: return "你之前"
     val wd = when (d.dayOfWeek.isoDayNumber) { 1 -> "周一"; 2 -> "周二"; 3 -> "周三"; 4 -> "周四"; 5 -> "周五"; 6 -> "周六"; else -> "周日" }
     return "你$wd"
+}
+
+/** B6-03 硬门:今天已有确认计划时,Morning 不生成,只引导去「改今天」(plan-revise)。 */
+@Composable
+private fun PlanExistsGate(modifier: Modifier = Modifier, onGoToToday: () -> Unit) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("今天已经有计划了", style = TnaTypography.Display.copy(fontWeight = FontWeight.Bold))
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            "想调整就去「今天」改一改,不用重新规划。",
+            style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        TnaButton(text = "去改今天", onClick = onGoToToday, style = TnaButtonStyle.Primary, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 @Composable

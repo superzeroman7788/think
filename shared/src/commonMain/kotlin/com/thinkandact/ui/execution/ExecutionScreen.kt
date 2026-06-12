@@ -259,6 +259,11 @@ fun ExecutionScreen(
         )
     }
 
+    // B6-06:还没到点就点完成 → 轻确认。
+    if (state.earlyCompleteAsk) {
+        EarlyCompleteDialog(onConfirm = viewModel::confirmEarlyComplete, onDismiss = viewModel::dismissEarlyComplete)
+    }
+
     state.proposal?.let { proposal ->
         ReviseDiffDialog(
             summary = proposal.summary,
@@ -696,7 +701,7 @@ private fun ReviseDiffDialog(
     onCancel: () -> Unit,
     onApply: () -> Unit,
 ) {
-    val changes = revisions.filter { it.change == "moved" || it.change == "dropped" }
+    val changes = revisions.filter { it.change in setOf("moved", "skip", "delete", "dropped") }
     val unchangedCount = revisions.count { it.change == "unchanged" }
     Dialog(onDismissRequest = onCancel) {
         Column(
@@ -758,17 +763,50 @@ private fun DiffRow(r: RevisionDto) {
                 r.after.plannedStart, r.after.plannedDuration,
             )
             if (detail.isNotBlank()) {
-                Text(text = detail, modifier = Modifier.padding(top = 3.dp), style = TnaTypography.Mono.copy(color = if (r.change == "dropped") TnaColors.Muted else TnaColors.AccentDeep))
+                val removal = r.change == "skip" || r.change == "delete" || r.change == "dropped"
+                Text(
+                    text = detail,
+                    modifier = Modifier.padding(top = 3.dp),
+                    style = TnaTypography.Mono.copy(color = if (removal) TnaColors.Muted else TnaColors.AccentDeep),
+                )
             }
         }
         Text(
-            text = if (r.change == "dropped") "✕" else "→",
-            style = TnaTypography.Body.copy(color = if (r.change == "dropped") TnaColors.Muted else TnaColors.Accent, fontWeight = FontWeight.Bold),
+            text = when (r.change) {
+                "delete" -> "✕"
+                "skip", "dropped" -> "—"
+                else -> "→"
+            },
+            style = TnaTypography.Body.copy(
+                color = if (r.change == "moved") TnaColors.Accent else TnaColors.Muted,
+                fontWeight = FontWeight.Bold,
+            ),
         )
     }
 }
 
 /** ★ 提醒白名单引导(一次性、温和、不说教)。 */
+@Composable
+private fun EarlyCompleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card)
+                .border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp),
+        ) {
+            Text("还没到时间", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
+            Text(
+                "这件还没到开始时间,现在就算完成吗?",
+                modifier = Modifier.padding(top = 8.dp),
+                style = TnaTypography.AiVoice.copy(color = TnaColors.InkSoft),
+            )
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TnaButton(text = "再等等", onClick = onDismiss, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
+                TnaButton(text = "就算完成", onClick = onConfirm, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 @Composable
 private fun BackgroundGuideDialog(onSettings: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {

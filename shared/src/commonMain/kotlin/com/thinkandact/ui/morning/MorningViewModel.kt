@@ -51,6 +51,15 @@ class MorningViewModel(
     init {
         prepareSession()
         loadRecall()
+        checkTodayPlan()
+    }
+
+    /** B6-03:开屏查今天是否已有确认计划。有 → 硬门:不生成,引导去改今天。 */
+    fun checkTodayPlan() {
+        viewModelScope.launch {
+            val has = runCatching { planRepository.hasTodayPlan() }.getOrDefault(false)
+            _uiState.update { it.copy(todayHasPlan = has) }
+        }
     }
 
     // ── 早上浮现（§三）：到日子了的收件箱条目召回 ─────────────────────────
@@ -485,6 +494,8 @@ class MorningViewModel(
 
 data class MorningUiState(
     val rawInput: String = "",
+    /** B6-03:今天已有确认计划 → Morning 不展示生成流,改提示去「改今天」。 */
+    val todayHasPlan: Boolean = false,
     val isPreparingSession: Boolean = false,
     val isLoading: Boolean = false,
     val isSavingPlan: Boolean = false,

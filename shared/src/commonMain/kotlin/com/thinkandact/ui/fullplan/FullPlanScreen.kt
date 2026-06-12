@@ -190,15 +190,26 @@ fun FullPlanScreen(
 
         state.proposal?.let { p -> ReviseDiffDialog(p.summary, p.revisions, p.added, p.warnings, state.isApplying, viewModel::cancelProposal, viewModel::applyProposal) }
         editTask?.let { t ->
-            EditTaskDialog(
-                task = t,
-                onDismiss = { editTask = null },
-                onDone = { viewModel.markDone(t.id); editTask = null },
-                onSkip = { viewModel.markSkip(t.id); editTask = null },
-                onSave = { title, h, m, dur, important ->
-                    viewModel.editTask(t.id, title, h, m, dur, important, t.isPoint); editTask = null
-                },
-            )
+            // B6-04/可点性:已跳过(或旧 dropped)的任务不进普通编辑,只给「恢复 / 删除」,免得像还活着。
+            if (t.status == "skipped" || t.status == "dropped") {
+                SkippedTaskDialog(
+                    task = t,
+                    onDismiss = { editTask = null },
+                    onRestore = { viewModel.restoreTask(t.id); editTask = null },
+                    onDelete = { viewModel.deleteTask(t.id); editTask = null },
+                )
+            } else {
+                EditTaskDialog(
+                    task = t,
+                    onDismiss = { editTask = null },
+                    onDone = { viewModel.markDone(t.id); editTask = null },
+                    onSkip = { viewModel.markSkip(t.id); editTask = null },
+                    onDelete = { viewModel.deleteTask(t.id); editTask = null },
+                    onSave = { title, h, m, dur, important ->
+                        viewModel.editTask(t.id, title, h, m, dur, important, t.isPoint); editTask = null
+                    },
+                )
+            }
         }
         addKind?.let { kind ->
             AddTaskDialog(
@@ -341,6 +352,7 @@ private fun EditTaskDialog(
     onDismiss: () -> Unit,
     onDone: () -> Unit,
     onSkip: () -> Unit,
+    onDelete: () -> Unit,
     onSave: (title: String, hour: Int, minute: Int, durationMin: Int, important: Boolean) -> Unit,
 ) {
     val isPoint = task.isPoint
@@ -366,6 +378,35 @@ private fun EditTaskDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TnaButton("跳过", onSkip, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
                 TnaButton("标完成", onDone, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+            }
+            // B6-04 点选删除:软删消失(区别于「跳过」=不做了灰显)。低调放底部,避免误触。
+            Text(
+                text = "删除这项",
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clickable(onClick = onDelete),
+                style = TnaTypography.Mono.copy(color = TnaColors.Muted),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+    }
+}
+
+/** B6-04:已跳过任务的受限操作 —— 只「恢复(撤销跳过)」或「删除」,不进普通编辑(免得像还活着)。 */
+@Composable
+private fun SkippedTaskDialog(
+    task: TaskRowDto,
+    onDismiss: () -> Unit,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card).border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp)) {
+            Text(task.title, style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
+            Spacer(Modifier.height(6.dp))
+            Text("这件今天跳过了。", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TnaButton("删除", onDelete, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
+                TnaButton("恢复", onRestore, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -472,7 +513,7 @@ private fun Stepper(value: Int, onMinus: () -> Unit, onPlus: () -> Unit, label: 
 
 @Composable
 private fun ReviseDiffDialog(summary: String, revisions: List<RevisionDto>, added: List<AddedReviseDto>, warnings: List<String>, isApplying: Boolean, onCancel: () -> Unit, onApply: () -> Unit) {
-    val changes = revisions.filter { it.change == "moved" || it.change == "dropped" }
+    val changes = revisions.filter { it.change in setOf("moved", "skip", "delete", "dropped") }
     Dialog(onDismissRequest = onCancel) {
         Column(modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card).border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp)) {
             Text("想这么改", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))

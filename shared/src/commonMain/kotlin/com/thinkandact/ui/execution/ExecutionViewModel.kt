@@ -110,6 +110,26 @@ class ExecutionViewModel(
     fun completeCurrent() {
         val cur = currentTask() ?: return
         if (uiState.value.pendingTaskId != null || uiState.value.isCompleting) return
+        // B6-06:还没到开始时间就点「完成」→ 轻确认,只拦"提前完成";正常到点完成无摩擦。
+        val startSec = cur.plannedStart?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }
+        if (startSec != null && Clock.System.now().epochSeconds < startSec) {
+            _uiState.update { it.copy(earlyCompleteAsk = true) }
+            return
+        }
+        doComplete(cur)
+    }
+
+    /** B6-06:确认提前完成。 */
+    fun confirmEarlyComplete() {
+        _uiState.update { it.copy(earlyCompleteAsk = false) }
+        val cur = currentTask() ?: return
+        if (uiState.value.pendingTaskId != null || uiState.value.isCompleting) return
+        doComplete(cur)
+    }
+
+    fun dismissEarlyComplete() { _uiState.update { it.copy(earlyCompleteAsk = false) } }
+
+    private fun doComplete(cur: TaskRowDto) {
         val now = Clock.System.now().toString()
         // v1.3：完成时仅在有真实起点时写 actual_start(库内已有 / 本地变当前);禁止用完成时刻冒充。
         val actualStart = cur.actualStart
@@ -350,18 +370,22 @@ class ExecutionViewModel(
         viewModelScope.launch {
             runCatching { planRepository.proposeRevision(instruction, uiState.value.tasks) }
                 .onSuccess { proposal ->
-                    val hasRevisionChange = proposal.revisions.any { it.change == "moved" || it.change == "dropped" }
+                    val hasRevisionChange = proposal.revisions.any {
+                        it.change in setOf("moved", "skip", "delete", "dropped")
+                    }
                     val hasAdded = proposal.added.isNotEmpty()
                     // 调试探照灯:LLM 原话 → 返回结构 → FE 如何处理。
                     com.thinkandact.core.debug.FeDebug.llm(
                         userText = instruction,
                         rawStructure = "revisions=" + proposal.revisions.map { "${it.change}:${it.title}" } +
                             " added=" + proposal.added.map { it.title } + " warnings=" + proposal.warnings,
-                        handling = if (!hasRevisionChange && !hasAdded) "无 moved/dropped/added → 提示用户" else "渲染前后对比",
+                        handling = if (!hasRevisionChange && !hasAdded) "无 moved/skip/delete/added → 提示用户" else "渲染前后对比",
                     )
-                    // FE 不识别的操作类型(非 moved/dropped/unchanged)被丢:发声,别静默。
-                    proposal.revisions.filter { it.change !in setOf("moved", "dropped", "unchanged") }.forEach {
-                        com.thinkandact.core.debug.FeDebug.drop("plan-revise 操作 change=${it.change} (${it.title})", "FE 只渲染/应用 moved+dropped")
+                    // FE 不识别的操作类型被丢:发声,别静默。
+                    proposal.revisions.filter {
+                        it.change !in setOf("moved", "skip", "delete", "dropped", "unchanged")
+                    }.forEach {
+                        com.thinkandact.core.debug.FeDebug.drop("plan-revise 操作 change=${it.change} (${it.title})", "FE 只渲染/应用 moved+skip+delete")
                     }
                     if (!hasRevisionChange && !hasAdded) {
                         // v1.3:照实展示后端 reject_reason / warnings;**不得**用固定「没听出」覆盖 BE 文案。
@@ -384,7 +408,7 @@ class ExecutionViewModel(
         }
     }
 
-    /** 用户点「应用」→ 落库（仅 moved + dropped）。基线陈旧 → 自动重新 propose。 */
+    /** 用户点「应用」→ 落库（moved + skip + delete）。基线陈旧 → 自动重新 propose。 */
     fun applyProposal() {
         val proposal = uiState.value.proposal ?: return
         if (uiState.value.isApplying) return
@@ -398,7 +422,8 @@ class ExecutionViewModel(
                         status = "planned",
                     ),
                 )
-                "dropped" -> ApplyRevisionDto(r.taskId, "dropped", ApplyAfterDto(status = "dropped"))
+                "skip", "dropped" -> ApplyRevisionDto(r.taskId, "skip", ApplyAfterDto(status = "skipped"))
+                "delete" -> ApplyRevisionDto(r.taskId, "delete", ApplyAfterDto(status = "deleted"))
                 "unchanged" -> null // 不变不落库,正常
                 else -> {
                     com.thinkandact.core.debug.FeDebug.drop("apply 跳过 change=${r.change} (${r.title})", "FE 未识别该操作类型")
@@ -580,6 +605,8 @@ data class ExecutionUiState(
     val inboxBadge: Int = 0,
     /** §二 时刻点横幅:到点弹出的钉子(完成/待会儿);块不切换。 */
     val activePoint: TaskRowDto? = null,
+    /** B6-06:还没到点就点「完成」→ 轻确认(只拦提前完成)。 */
+    val earlyCompleteAsk: Boolean = false,
 ) {
     val currentTask: TaskRowDto? get() = tasks.firstOrNull { it.id == currentTaskId }
     /** 进度 = 已处理(完成 + 跳过 + 不做了)/ 总数。 */

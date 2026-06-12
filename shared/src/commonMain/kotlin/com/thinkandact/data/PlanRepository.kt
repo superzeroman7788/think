@@ -249,6 +249,20 @@ class PlanRepository(
         }
     }
 
+    /** B6-04 点选删除:单条软删(deleted_at=now)。今日计划/执行/复盘/计数都按 deleted_at=is.null 过滤 → 该任务彻底消失。 */
+    suspend fun softDeleteTask(id: String) {
+        val session = ensureSession()
+        val response = httpClient.patch(taskByIdUrl(id)) {
+            supabaseHeaders(session.accessToken)
+            header("Prefer", "return=minimal")
+            contentType(ContentType.Application.Json)
+            setBody(TaskSoftDeleteDto(deletedAt = Clock.System.now().toString()))
+        }
+        if (!response.status.isSuccess()) {
+            throw IllegalStateException(response.bodyAsText().ifBlank { "Task delete failed." })
+        }
+    }
+
     /** 跳过：status=skipped 且清空 actual_start（块一），避免被跳过的任务看着像「开始过」。 */
     suspend fun markTaskSkipped(id: String) {
         val session = ensureSession()

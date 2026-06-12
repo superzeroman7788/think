@@ -95,6 +95,15 @@ fun ReviewScreen(
     val droppedN = state.tasks.count { it.status == "dropped" }
     val hasChanges = doneN + skipN + movedN + droppedN > 0
 
+    // B6-07 白天只读:今天收尾前复盘只能看不能改。解锁=全部处理完 或 最后一项结束时间已过。
+    val nowSec = remember { Clock.System.now().epochSeconds }
+    val allHandled = state.tasks.isNotEmpty() && state.tasks.all { it.status == "done" || it.status == "skipped" || it.status == "dropped" }
+    val lastEndSec = state.tasks.mapNotNull { t ->
+        t.plannedStart?.let { runCatching { Instant.parse(it).epochSeconds }.getOrNull() }?.let { it + (t.plannedDuration ?: 0) * 60L }
+    }.maxOrNull()
+    val lastEndPassed = lastEndSec != null && nowSec >= lastEndSec
+    val reviewLocked = state.tasks.isNotEmpty() && !allHandled && !lastEndPassed
+
     val onVoiceStart: suspend () -> Unit = {
         if (!state.isFinalizing && !state.isParsing && state.parseResult == null) {
             if (mic.request()) viewModel.startVoice() else viewModel.dismissVoiceHint()
@@ -121,10 +130,19 @@ fun ReviewScreen(
                         Text("  拉今天的记录…", style = TnaTypography.Body.copy(color = TnaColors.InkSoft))
                     }
                 } else {
-                    // bug8:白天进复盘、且今天确实有变化 → 先给一条「今天的变化」小结。
+                    // 白天进复盘、且今天确实有变化 → 先给一条「今天的变化」小结。
                     if (isDaytime && hasChanges) {
                         Spacer(Modifier.height(14.dp))
                         ChangesSummaryCard(done = doneN, skipped = skipN, moved = movedN, dropped = droppedN)
+                    }
+                    // B6-07:今天还没收尾 → 复盘只读,给一句温和说明。
+                    if (reviewLocked) {
+                        Spacer(Modifier.height(14.dp))
+                        Box(
+                            modifier = Modifier.fillMaxWidth().background(TnaColors.AccentSoft.copy(alpha = 0.5f), TnaShapes.Input).padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            Text("今天还在路上,晚点再来收尾。", style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep))
+                        }
                     }
                     // ① 审核今天
                     SectionTitle("1", "审核今天")
@@ -136,11 +154,12 @@ fun ReviewScreen(
                                 task = task,
                                 onClick = { viewModel.cycleStatus(task.id) },
                                 onLongClick = { viewModel.markSkipped(task.id) },
+                                locked = reviewLocked,
                             )
                             Spacer(Modifier.height(8.dp))
                         }
                         Text(
-                            "点一下:未做 ↔ 完成 · 长按标记跳过(或用下面语音改)",
+                            if (reviewLocked) "今天收尾后可改(全部处理完 / 最后一项时间过了就解锁)" else "点一下:未做 ↔ 完成 · 长按标记跳过(或用下面语音改)",
                             style = TnaTypography.Mono.copy(color = TnaColors.Muted),
                         )
                     }
@@ -344,13 +363,13 @@ private fun Banner(text: String, onDismiss: (() -> Unit)?) {
 }
 
 @Composable
-private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun TaskReviewRow(task: TaskRowDto, onClick: () -> Unit, onLongClick: (() -> Unit)? = null, locked: Boolean = false) {
     val dropped = task.status == "dropped"
     val (label, color) = statusChip(task.status)
     Row(
         modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Input).border(1.dp, TnaColors.Line, TnaShapes.Input)
             .then(
-                if (dropped) Modifier
+                if (dropped || locked) Modifier // B6-07 白天只读:锁定期不可点改完成情况
                 else Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
             )
             .padding(horizontal = 14.dp, vertical = 12.dp),
