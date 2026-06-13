@@ -99,17 +99,29 @@ class FullPlanViewModel(
     }
 
     // F7-03「+ 加一项 / + 加时刻点」：插一条真任务后刷新。
-    fun addTask(title: String, hour: Int, minute: Int, important: Boolean, durationMin: Int = 30) =
-        add(title, hour, minute, important, durationMin, "block")
-    fun addPoint(title: String, hour: Int, minute: Int) = add(title, hour, minute, false, 0, "point")
+    fun addTask(title: String, hour: Int, minute: Int, important: Boolean, durationMin: Int = 30, onResult: (Boolean, String?) -> Unit = { _, _ -> }) =
+        add(title, hour, minute, important, durationMin, "block", onResult)
+    fun addPoint(title: String, hour: Int, minute: Int, onResult: (Boolean, String?) -> Unit = { _, _ -> }) =
+        add(title, hour, minute, false, 0, "point", onResult)
 
-    private fun add(title: String, hour: Int, minute: Int, important: Boolean, durationMin: Int, kind: String) {
+    private fun add(
+        title: String,
+        hour: Int,
+        minute: Int,
+        important: Boolean,
+        durationMin: Int,
+        kind: String,
+        onResult: (Boolean, String?) -> Unit,
+    ) {
         val t = title.trim()
-        if (t.isBlank()) return
+        if (t.isBlank()) {
+            onResult(false, "先写个标题。")
+            return
+        }
         viewModelScope.launch {
             runCatching { planRepository.addTaskToday(t, todayIsoAt(hour, minute), durationMin, important, kind) }
-                .onSuccess { load() }
-                .onFailure { e -> _uiState.update { it.copy(errorMessage = e.message ?: "加这一项没存上,再试一次。") } }
+                .onSuccess { load(); onResult(true, null) }
+                .onFailure { e -> onResult(false, e.message ?: "加这一项没存上,再试一次。") }
         }
     }
 

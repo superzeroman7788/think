@@ -3,6 +3,7 @@ package com.thinkandact.ui.reminders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thinkandact.data.PlanRepository
+import com.thinkandact.core.time.plannedStartSec
 import com.thinkandact.data.remote.TaskRowDto
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,14 +41,21 @@ class RemindersViewModel(
                 // 每隔几 tick 重拉一次，确认/重排后的最新计划能反映进来。
                 if (ticks % REFRESH_EVERY == 0) loadTasks()
                 val now = Clock.System.now()
+                val nowSec = now.epochSeconds
                 if (_active.value == null) {
-                    val due = tasks.firstOrNull { t ->
-                        !t.important &&
-                            !t.isPoint && // 时刻点由执行屏专属横幅(完成/待会儿)处理,不走这条通用横幅
-                            t.status == STATUS_PLANNED &&
-                            t.id !in reminded &&
-                            t.plannedStart.crossed(lastTick, now)
-                    }
+                    // C8-01: 多条同时到点 → 取 planned_start 最早的一条;仍只在 tick 窗口内触发(不回补历史)。
+                    val due = tasks
+                        .asSequence()
+                        .filter { t ->
+                            !t.important &&
+                                !t.isPoint &&
+                                t.status == STATUS_PLANNED &&
+                                t.id !in reminded &&
+                                t.plannedStart.crossed(lastTick, now)
+                        }
+                        .mapNotNull { t -> t.plannedStartSec()?.let { sec -> t to sec } }
+                        .minByOrNull { it.second }
+                        ?.first
                     if (due != null) {
                         reminded.add(due.id)
                         _active.value = due

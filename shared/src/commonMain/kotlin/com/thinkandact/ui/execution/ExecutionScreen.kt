@@ -306,9 +306,20 @@ private fun PointBanner(
         currentTitle?.takeIf { it.isNotBlank() }?.let {
             Text("手头的「$it」不中断,做完这件继续", modifier = Modifier.padding(top = 4.dp), style = TnaTypography.Mono.copy(color = TnaColors.Muted))
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TnaButton("待会儿", onClick = onLater, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
-            TnaButton("完成", onClick = onDone, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TnaButton(
+                text = "待会儿",
+                onClick = onLater,
+                style = TnaButtonStyle.Secondary,
+                modifier = Modifier.weight(0.9f),
+            )
+            val shortTitle = point.title.take(8).let { if (point.title.length > 8) "$it…" else it }
+            TnaButton(
+                text = "完成·$shortTitle",
+                onClick = onDone,
+                style = TnaButtonStyle.Secondary,
+                modifier = Modifier.weight(1.1f),
+            )
         }
     }
 }

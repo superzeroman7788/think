@@ -43,10 +43,13 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.thinkandact.core.time.PlanClockPhase
 import com.thinkandact.core.time.addedDiffDetail
 import com.thinkandact.core.time.formatClock
 import com.thinkandact.core.time.formatDuration
 import com.thinkandact.core.time.formatTimeRange
+import com.thinkandact.core.time.planClockPhase
+import com.thinkandact.core.time.plannedEndSec
 import com.thinkandact.core.time.reviseDiffDetail
 import com.thinkandact.data.remote.AddedReviseDto
 import com.thinkandact.data.remote.RevisionDto
@@ -89,6 +92,7 @@ fun FullPlanScreen(
     var barCenterY by remember { mutableStateOf(0f) }
     var editTask by remember { mutableStateOf<TaskRowDto?>(null) }
     var addKind by remember { mutableStateOf<String?>(null) } // null=关；"block"=加一项；"point"=加时刻点
+    var addDialogError by remember { mutableStateOf<String?>(null) }
     var showReviseType by remember { mutableStateOf(false) } // F7-03 轻点打字改今天
 
     val onPressStart: suspend () -> Unit = {
@@ -134,7 +138,7 @@ fun FullPlanScreen(
                             } else {
                                 val st = rowState(task, nowSec)
                                 PlanRow(
-                                    task = task, state = st, rem = remText(task, nowSec, st),
+                                    task = task, state = st, nowSec = nowSec, rem = remText(task, nowSec, st),
                                     nestedPoints = nestedByBlock[task.id].orEmpty(),
                                     onClick = { if (st == RowState.Suggestion) viewModel.acceptSuggestion(task.id) else editTask = task },
                                     onPointClick = { editTask = it },
@@ -214,10 +218,19 @@ fun FullPlanScreen(
         addKind?.let { kind ->
             AddTaskDialog(
                 isPoint = kind == "point",
-                onDismiss = { addKind = null },
+                errorMessage = addDialogError,
+                onDismiss = { addKind = null; addDialogError = null },
                 onConfirm = { title, h, m, dur, important ->
-                    if (kind == "point") viewModel.addPoint(title, h, m) else viewModel.addTask(title, h, m, important, dur)
-                    addKind = null
+                    val onDone: (Boolean, String?) -> Unit = { ok, err ->
+                        if (ok) {
+                            addKind = null
+                            addDialogError = null
+                        } else {
+                            addDialogError = err ?: "加这一项没存上,再试一次。"
+                        }
+                    }
+                    if (kind == "point") viewModel.addPoint(title, h, m, onDone)
+                    else viewModel.addTask(title, h, m, important, dur, onDone)
                 },
             )
         }
@@ -238,6 +251,7 @@ fun FullPlanScreen(
 private fun PlanRow(
     task: TaskRowDto,
     state: RowState,
+    nowSec: Long,
     rem: String?,
     onClick: () -> Unit,
     nestedPoints: List<TaskRowDto> = emptyList(),
@@ -266,6 +280,7 @@ private fun PlanRow(
                     "skipped" -> StatusPill("跳过", Color(0xFFEFEAE5), TnaColors.Muted)
                     else -> if (state == RowState.Suggestion) Text("+ 加入", style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold))
                     else if (state == RowState.Current) Text("进行中", style = TnaTypography.Mono.copy(color = NowTerra, fontWeight = FontWeight.Bold))
+                    else if (state == RowState.Past && task.planClockPhase(nowSec) == PlanClockPhase.Overdue) Text("超时", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
                 }
             }
             rem?.let { Text(it, modifier = Modifier.padding(top = 4.dp), style = TnaTypography.Mono.copy(color = if (state == RowState.Current) NowTerra else TnaColors.Muted)) }
@@ -412,18 +427,20 @@ private fun SkippedTaskDialog(
     }
 }
 
-/** F7-03「+ 加一项 / + 加时刻点」纯点选新增。 */
+/** F7-03「+ 加一项 / + 加时刻点」纯点选新增。C8-05:空标题禁用、失败留弹窗内。 */
 @Composable
 private fun AddTaskDialog(
     isPoint: Boolean,
+    errorMessage: String? = null,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, hour: Int, minute: Int, durationMin: Int, important: Boolean) -> Unit,
+    onConfirm: (String, Int, Int, Int, Boolean) -> Unit,
 ) {
     var title by remember { mutableStateOf("") }
     var hour by remember { mutableStateOf(9) }
     var minute by remember { mutableStateOf(0) }
     var duration by remember { mutableStateOf(30) }
     var important by remember { mutableStateOf(false) }
+    val titleOk = title.trim().isNotEmpty()
     Dialog(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card).border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp)) {
             Text(if (isPoint) "加一个时刻点" else "加一项", style = TnaTypography.Body.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold))
@@ -439,10 +456,20 @@ private fun AddTaskDialog(
                 Spacer(Modifier.height(14.dp))
                 DurationStepperRow(duration) { duration = it }
             }
+            errorMessage?.let {
+                Spacer(Modifier.height(10.dp))
+                Text(it, style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep))
+            }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TnaButton("取消", onDismiss, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))
-                TnaButton("加进今天", onClick = { if (title.isNotBlank()) onConfirm(title, hour, minute, duration, important) }, style = TnaButtonStyle.Primary, modifier = Modifier.weight(1f))
+                TnaButton(
+                    "加进今天",
+                    onClick = { if (titleOk) onConfirm(title.trim(), hour, minute, duration, important) },
+                    enabled = titleOk,
+                    style = TnaButtonStyle.Primary,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -477,10 +504,30 @@ private fun ImportantToggle(important: Boolean, onChange: (Boolean) -> Unit) {
 @Composable
 private fun TimeStepperRow(label: String, hour: Int, minute: Int, onHour: (Int) -> Unit, onMinute: (Int) -> Unit) {
     Text(label, style = TnaTypography.Mono.copy(color = TnaColors.Muted))
+    val minutesOfDay = hour * 60 + minute
+    val setMinutes: (Int) -> Unit = { m ->
+        val clamped = m.coerceIn(0, 24 * 60 - 1)
+        onHour(clamped / 60)
+        onMinute(clamped % 60)
+    }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-        Stepper(value = hour, onMinus = { onHour((hour + 23) % 24) }, onPlus = { onHour((hour + 1) % 24) }, label = hour.toString().padStart(2, '0'))
+        Stepper(
+            value = hour,
+            onMinus = { setMinutes(minutesOfDay - 60) },
+            onPlus = { setMinutes(minutesOfDay + 60) },
+            label = hour.toString().padStart(2, '0'),
+            minusEnabled = minutesOfDay >= 60,
+            plusEnabled = minutesOfDay <= 23 * 60 + 59 - 60,
+        )
         Text(" : ", style = TnaTypography.Body.copy(color = TnaColors.Ink))
-        Stepper(value = minute, onMinus = { onMinute((minute + 55) % 60) }, onPlus = { onMinute((minute + 5) % 60) }, label = minute.toString().padStart(2, '0'))
+        Stepper(
+            value = minute,
+            onMinus = { setMinutes(minutesOfDay - 15) },
+            onPlus = { setMinutes(minutesOfDay + 15) },
+            label = minute.toString().padStart(2, '0'),
+            minusEnabled = minutesOfDay >= 15,
+            plusEnabled = minutesOfDay <= 23 * 60 + 59 - 15,
+        )
     }
 }
 
@@ -503,11 +550,33 @@ private fun AddChip(text: String, modifier: Modifier = Modifier, onClick: () -> 
 }
 
 @Composable
-private fun Stepper(value: Int, onMinus: () -> Unit, onPlus: () -> Unit, label: String, labelWidth: androidx.compose.ui.unit.Dp = 36.dp) {
+private fun Stepper(
+    value: Int,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    label: String,
+    labelWidth: androidx.compose.ui.unit.Dp = 36.dp,
+    minusEnabled: Boolean = true,
+    plusEnabled: Boolean = true,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(TnaColors.LineSoft).clickable(onClick = onMinus), contentAlignment = Alignment.Center) { Text("−", style = TnaTypography.Body.copy(color = TnaColors.Ink)) }
+        StepperBtn("−", minusEnabled, onMinus)
         Text(label, modifier = Modifier.width(labelWidth), style = TnaTypography.Mono.copy(color = TnaColors.Ink, fontWeight = FontWeight.Bold), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(TnaColors.LineSoft).clickable(onClick = onPlus), contentAlignment = Alignment.Center) { Text("+", style = TnaTypography.Body.copy(color = TnaColors.Ink)) }
+        StepperBtn("+", plusEnabled, onPlus)
+    }
+}
+
+@Composable
+private fun StepperBtn(text: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (enabled) TnaColors.LineSoft else TnaColors.LineSoft.copy(alpha = 0.45f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = TnaTypography.Body.copy(color = if (enabled) TnaColors.Ink else TnaColors.Muted))
     }
 }
 
@@ -557,17 +626,21 @@ private fun pointInBlock(p: TaskRowDto, b: TaskRowDto): Boolean {
 private fun rowState(t: TaskRowDto, nowSec: Long): RowState {
     if (t.status == "suggested") return RowState.Suggestion
     if (t.status == "done" || t.status == "skipped" || t.status == "dropped") return RowState.Past
-    val s = startSec(t) ?: return RowState.Upcoming
-    val e = endSec(t) ?: return RowState.Upcoming
-    return when {
-        nowSec < s -> RowState.Upcoming
-        nowSec < e -> RowState.Current
-        else -> RowState.Current // 超时未完成,仍当前(温和提示见 remText)
+    return when (t.planClockPhase(nowSec)) {
+        PlanClockPhase.NotStarted -> RowState.Upcoming
+        PlanClockPhase.InProgress -> RowState.Current
+        PlanClockPhase.Overdue -> RowState.Past
     }
 }
 
 private fun remText(t: TaskRowDto, nowSec: Long, st: RowState): String? {
-    if (st == RowState.Past || st == RowState.Suggestion) return null
+    if (st == RowState.Past || st == RowState.Suggestion) {
+        if (st == RowState.Past && t.planClockPhase(nowSec) == PlanClockPhase.Overdue) {
+            val e = t.plannedEndSec() ?: return null
+            return "超了约 ${fmtDur(nowSec - e)}· 该收尾了？"
+        }
+        return null
+    }
     val s = startSec(t) ?: return null
     val e = endSec(t) ?: return null
     return when {

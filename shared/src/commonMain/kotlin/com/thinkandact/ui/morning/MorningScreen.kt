@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.thinkandact.core.time.formatClock
 import com.thinkandact.core.time.formatTimeRange
 import com.thinkandact.ui.common.SectionLabel
 import com.thinkandact.ui.common.TnaTopBar
@@ -643,22 +645,47 @@ private fun ProposalContent(
     SectionLabel(text = "today", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
     if (isConfirmed) ConfirmedPanel(modifier = Modifier.padding(bottom = 10.dp))
 
-    sortedTasks.forEach { item ->
-        MorningTaskCard(
-            taskId = item.id,
-            title = item.task.title,
-            time = formatTimeRange(item.task.plannedStart, item.task.plannedDuration, item.task.kind == "point").ifEmpty { "--:--" },
-            note = item.task.note,
-            important = item.task.important,
-            // v1.4:软=未接受(status=suggested);加入后 status=planned → 不再软。旧数据兜底:ai_suggestion 仍非 planned。
-            suggested = item.task.status == "suggested",
-            routine = item.task.source == "routine",
-            editable = !isConfirmed,
-            onDelete = onDeleteTask,
-            onToggleImportant = onToggleImportant,
-            onEditTime = { onEditTime(item) },
-            onAccept = { onAcceptSuggestion(item.id) },
-        )
+    // C8-03: 与完整计划页一致 — block 完整一条,point 折成块内钉子或独立细行。
+    val points = sortedTasks.filter { it.task.kind == "point" }
+    val blocks = sortedTasks.filter { it.task.kind != "point" }
+    val nestedByBlock = HashMap<String, MutableList<EditablePlanTask>>()
+    val standalonePoints = mutableListOf<EditablePlanTask>()
+    points.forEach { p ->
+        val anchorHhmm = p.task.anchorBlockStart
+        val host = blocks.firstOrNull { b ->
+            anchorHhmm != null && b.task.plannedStart?.let { formatClock(it) == anchorHhmm } == true
+        } ?: blocks.firstOrNull { b -> proposalPointInBlock(p, b) }
+        if (host != null) nestedByBlock.getOrPut(host.id) { mutableListOf() }.add(p)
+        else standalonePoints.add(p)
+    }
+    val sequence = (blocks + standalonePoints).sortedBy { it.task.plannedStart.toMinutesOfDayOrDefault() }
+    sequence.forEach { item ->
+        if (item.task.kind == "point") {
+            MorningPointRow(
+                item = item,
+                editable = !isConfirmed,
+                onDelete = onDeleteTask,
+                onEditTime = { onEditTime(item) },
+            )
+        } else {
+            MorningTaskCard(
+                taskId = item.id,
+                title = item.task.title,
+                time = formatTimeRange(item.task.plannedStart, item.task.plannedDuration, false).ifEmpty { "--:--" },
+                note = item.task.note,
+                important = item.task.important,
+                suggested = item.task.status == "suggested",
+                routine = item.task.source == "routine",
+                editable = !isConfirmed,
+                nestedPoints = nestedByBlock[item.id].orEmpty(),
+                onDelete = onDeleteTask,
+                onToggleImportant = onToggleImportant,
+                onEditTime = { onEditTime(item) },
+                onAccept = { onAcceptSuggestion(item.id) },
+                onEditNestedPoint = onEditTime,
+                onDeleteNestedPoint = onDeleteTask,
+            )
+        }
     }
     if (!isConfirmed) AddTaskRow(onClick = onAddTask, modifier = Modifier.padding(top = 2.dp, bottom = 9.dp))
     addTaskMessage?.let { AddTaskFeedbackBanner(it, onDismissAddTaskMessage) }
@@ -755,6 +782,55 @@ private fun ConfirmedPanel(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun MorningPointRow(
+    item: EditablePlanTask,
+    editable: Boolean,
+    onDelete: (String) -> Unit,
+    onEditTime: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            formatClock(item.task.plannedStart).ifEmpty { "--:--" },
+            modifier = Modifier.width(84.dp),
+            style = TnaTypography.Mono.copy(color = TnaColors.Muted),
+        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .background(TnaColors.Surface, TnaShapes.Card)
+                .border(1.dp, TnaColors.Line, TnaShapes.Card)
+                .then(if (editable) Modifier.clickable(onClick = onEditTime) else Modifier)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("●", style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
+            Text(
+                item.task.title,
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                style = TnaTypography.Body.copy(color = TnaColors.Ink),
+            )
+            if (editable) {
+                Text(
+                    "×",
+                    modifier = Modifier.padding(start = 8.dp).clickable { onDelete(item.id) },
+                    style = TnaTypography.Body.copy(color = TnaColors.Muted, fontWeight = FontWeight.Bold),
+                )
+            }
+        }
+    }
+}
+
+private fun proposalPointInBlock(p: EditablePlanTask, b: EditablePlanTask): Boolean {
+    val ps = p.task.plannedStart.toMinutesOfDayOrDefault()
+    val bs = b.task.plannedStart.toMinutesOfDayOrDefault()
+    val be = bs + (b.task.plannedDuration ?: 30)
+    return ps in bs until be
+}
+
+@Composable
 private fun MorningTaskCard(
     taskId: String,
     title: String,
@@ -765,10 +841,13 @@ private fun MorningTaskCard(
     suggested: Boolean = false,
     routine: Boolean = false,
     editable: Boolean = false,
+    nestedPoints: List<EditablePlanTask> = emptyList(),
     onDelete: (String) -> Unit = {},
     onToggleImportant: (String) -> Unit = {},
     onEditTime: () -> Unit = {},
     onAccept: () -> Unit = {},
+    onEditNestedPoint: (EditablePlanTask) -> Unit = {},
+    onDeleteNestedPoint: (String) -> Unit = {},
 ) {
     val background = if (suggested) Color.Transparent else TnaColors.Surface
     Column(
@@ -780,63 +859,99 @@ private fun MorningTaskCard(
             .then(if (routine && !suggested) Modifier.border(1.dp, TnaColors.Accent, TnaShapes.Card) else Modifier)
             .padding(horizontal = 15.dp, vertical = 13.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             Text(
                 text = if (important) "★" else "☆",
-                modifier = Modifier.padding(end = 7.dp).then(if (editable) Modifier.clickable { onToggleImportant(taskId) } else Modifier),
+                modifier = Modifier.padding(end = 7.dp, top = 1.dp).then(if (editable) Modifier.clickable { onToggleImportant(taskId) } else Modifier),
                 style = TnaTypography.Body.copy(color = if (important) TnaColors.Accent else TnaColors.Muted, fontWeight = FontWeight.Bold)
             )
             Text(
                 text = title,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f, fill = true),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
                 style = TnaTypography.Body.copy(color = if (suggested) TnaColors.InkSoft else TnaColors.Ink, fontWeight = if (suggested) FontWeight.Medium else FontWeight.Bold)
             )
-            if (suggested) {
+            // C8-07: 右侧操作区固定最小宽,长标题换行不挤竖排。
+            Row(
+                modifier = Modifier.widthIn(min = 88.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (suggested) {
+                    Text(
+                        text = "建议",
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .border(1.dp, TnaColors.Muted.copy(alpha = 0.45f), RoundedCornerShape(999.dp))
+                            .padding(horizontal = 9.dp, vertical = 3.dp),
+                        style = TnaTypography.Mono.copy(color = TnaColors.Muted)
+                    )
+                } else if (routine) {
+                    Text(
+                        text = "日常",
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .background(TnaColors.AccentSoft, RoundedCornerShape(999.dp))
+                            .border(1.dp, TnaColors.Accent.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
+                            .padding(horizontal = 9.dp, vertical = 3.dp),
+                        style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold)
+                    )
+                }
                 Text(
-                    text = "建议",
+                    text = time,
                     modifier = Modifier
-                        .padding(end = 8.dp)
-                        .border(1.dp, TnaColors.Muted.copy(alpha = 0.45f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 9.dp, vertical = 3.dp),
-                    style = TnaTypography.Mono.copy(color = TnaColors.Muted)
+                        .background(if (suggested) Color.Transparent else TnaColors.AccentSoft, RoundedCornerShape(7.dp))
+                        .then(if (editable) Modifier.clickable(onClick = onEditTime) else Modifier)
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = TnaTypography.Mono.copy(color = if (suggested) TnaColors.InkSoft else TnaColors.Accent)
                 )
-            } else if (routine) {
-                Text(
-                    text = "日常",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .background(TnaColors.AccentSoft, RoundedCornerShape(999.dp))
-                        .border(1.dp, TnaColors.Accent.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 9.dp, vertical = 3.dp),
-                    style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold)
-                )
+                if (suggested && editable) {
+                    Text(
+                        text = "加入",
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .background(TnaColors.AccentSoft, RoundedCornerShape(999.dp))
+                            .clickable(onClick = onAccept)
+                            .padding(horizontal = 11.dp, vertical = 4.dp),
+                        style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold)
+                    )
+                }
+                if (editable) {
+                    Text(
+                        text = "×",
+                        modifier = Modifier.padding(start = 6.dp).clickable { onDelete(taskId) }.padding(horizontal = 5.dp, vertical = 1.dp),
+                        style = TnaTypography.Body.copy(color = TnaColors.Muted, fontWeight = FontWeight.Bold)
+                    )
+                }
             }
-            Text(
-                text = time,
+        }
+
+        nestedPoints.forEach { p ->
+            Row(
                 modifier = Modifier
-                    .background(if (suggested) Color.Transparent else TnaColors.AccentSoft, RoundedCornerShape(7.dp))
-                    .then(if (editable) Modifier.clickable(onClick = onEditTime) else Modifier)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                style = TnaTypography.Mono.copy(color = if (suggested) TnaColors.InkSoft else TnaColors.Accent)
-            )
-            if (suggested && editable) {
-                // 「加入」→ 升级为真任务(planned)。软建议不进已接受集,加入后才算数。
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .then(if (editable) Modifier.clickable { onEditNestedPoint(p) } else Modifier),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("●", style = TnaTypography.Mono.copy(color = TnaColors.AccentDeep))
                 Text(
-                    text = "加入",
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .background(TnaColors.AccentSoft, RoundedCornerShape(999.dp))
-                        .clickable(onClick = onAccept)
-                        .padding(horizontal = 11.dp, vertical = 4.dp),
-                    style = TnaTypography.Body.copy(color = TnaColors.AccentDeep, fontWeight = FontWeight.SemiBold)
+                    formatClock(p.task.plannedStart),
+                    modifier = Modifier.padding(start = 6.dp).width(40.dp),
+                    style = TnaTypography.Mono.copy(color = TnaColors.Muted),
                 )
-            }
-            if (editable) {
                 Text(
-                    text = "×",
-                    modifier = Modifier.padding(start = 10.dp).clickable { onDelete(taskId) }.padding(horizontal = 5.dp, vertical = 1.dp),
-                    style = TnaTypography.Body.copy(color = TnaColors.Muted, fontWeight = FontWeight.Bold)
+                    p.task.title,
+                    modifier = Modifier.weight(1f).padding(start = 4.dp),
+                    style = TnaTypography.Body.copy(color = TnaColors.InkSoft),
                 )
+                if (editable) {
+                    Text(
+                        "×",
+                        modifier = Modifier.padding(start = 6.dp).clickable { onDeleteNestedPoint(p.id) },
+                        style = TnaTypography.Body.copy(color = TnaColors.Muted, fontWeight = FontWeight.Bold),
+                    )
+                }
             }
         }
 

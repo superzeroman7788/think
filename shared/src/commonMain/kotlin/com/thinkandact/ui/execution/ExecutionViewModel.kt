@@ -12,6 +12,7 @@ import com.thinkandact.data.remote.TaskRowDto
 import com.thinkandact.voice.AsrEvent
 import com.thinkandact.voice.VoiceInputService
 import com.thinkandact.voice.VoiceLatencyTracker
+import com.thinkandact.core.time.nextDuePoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -539,16 +540,10 @@ class ExecutionViewModel(
     /** 每个 tick / load 后检查:有到点(planned_start ≤ now)且未处理/未在待会儿窗口内的 point → 弹横幅。 */
     private fun checkPoints() {
         if (uiState.value.activePoint != null) return
-        val now = Clock.System.now()
-        val nowMs = now.toEpochMilliseconds()
-        val due = uiState.value.tasks
-            .filter { it.isPoint && it.status == STATUS_PLANNED && it.id !in handledPoints }
-            .filter { p ->
-                val start = p.plannedStart?.let { runCatching { Instant.parse(it) }.getOrNull() }
-                start != null && start <= now
-            }
-            .filter { (snoozeUntil[it.id] ?: 0L) <= nowMs }
-            .minByOrNull { it.plannedStart?.let { s -> runCatching { Instant.parse(s).epochSeconds }.getOrNull() } ?: Long.MAX_VALUE }
+        val nowSec = Clock.System.now().epochSeconds
+        val nowMs = Clock.System.now().toEpochMilliseconds()
+        val due = nextDuePoint(uiState.value.tasks, nowSec, handledPoints)
+            ?.takeIf { (snoozeUntil[it.id] ?: 0L) <= nowMs }
         if (due != null) _uiState.update { it.copy(activePoint = due) }
     }
 

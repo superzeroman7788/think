@@ -63,9 +63,14 @@ fun formatTimeRange(plannedStart: String?, plannedDurationMin: Int?, isPoint: Bo
     if (isPoint) return start
     val dur = plannedDurationMin ?: 0
     if (dur <= 0) return start
-    val endSec = runCatching { Instant.parse(plannedStart!!.trim()).epochSeconds + dur * 60L }.getOrNull() ?: return start
-    val end = Instant.fromEpochSeconds(endSec).toLocalDateTime(TimeZone.currentSystemDefault())
-    return "$start–${end.hour.toString().padStart(2, '0')}:${end.minute.toString().padStart(2, '0')}"
+    val tz = TimeZone.currentSystemDefault()
+    val startInstant = runCatching { Instant.parse(plannedStart!!.trim()) }.getOrNull() ?: return start
+    val endSec = startInstant.epochSeconds + dur * 60L
+    val end = Instant.fromEpochSeconds(endSec).toLocalDateTime(tz)
+    val endClock = "${end.hour.toString().padStart(2, '0')}:${end.minute.toString().padStart(2, '0')}"
+    // C8-08 / R8-03: 结束钟点小于开始 → 跨零点,加「次日」前缀。
+    val crossMidnight = endClock < start || end.date > startInstant.toLocalDateTime(tz).date
+    return if (crossMidnight) "$start–次日$endClock" else "$start–$endClock"
 }
 
 /**
