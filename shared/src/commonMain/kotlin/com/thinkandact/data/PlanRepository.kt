@@ -2,6 +2,7 @@ package com.thinkandact.data
 
 import com.thinkandact.core.config.SupabaseConfig
 import com.thinkandact.data.remote.AnonymousSignInResponse
+import com.thinkandact.data.remote.DeferredItemDto
 import com.thinkandact.data.remote.PlanGenerateRequest
 import com.thinkandact.data.remote.PlanGenerateResponseDto
 import com.thinkandact.data.remote.PlanTaskDto
