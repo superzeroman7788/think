@@ -1,0 +1,68 @@
+{
+  "ts": "20260606T110113Z",
+  "runs_per_path": 2,
+  "warm_idle_s": 15.0,
+  "cold": {
+    "runs": [
+      {
+        "path": "cold",
+        "connect_ms": 403.8,
+        "mic_to_first_partial_ms": 8665.9,
+        "speech_first_partial_ms": 8262.1
+      },
+      {
+        "path": "cold",
+        "connect_ms": 156.1,
+        "mic_to_first_partial_ms": 8398.0,
+        "speech_first_partial_ms": 8241.9
+      }
+    ],
+    "mic_to_first_partial": {
+      "n": 2,
+      "min_ms": 8398.0,
+      "max_ms": 8665.9,
+      "median_ms": 8532.0,
+      "mean_ms": 8532.0
+    },
+    "connect": {
+      "n": 2,
+      "min_ms": 156.1,
+      "max_ms": 403.8,
+      "median_ms": 279.9,
+      "mean_ms": 279.9
+    }
+  },
+  "hot": {
+    "runs": [
+      {
+        "path": "hot",
+        "connect_ms": 200.7,
+        "warm_idle_s": 15.0,
+        "mic_to_first_partial_ms": 6566.6,
+        "speech_first_partial_ms": 6566.6
+      },
+      {
+        "path": "hot",
+        "connect_ms": 188.5,
+        "warm_idle_s": 15.0,
+        "mic_to_first_partial_ms": 6630.9,
+        "speech_first_partial_ms": 6630.9
+      }
+    ],
+    "mic_to_first_partial": {
+      "n": 2,
+      "min_ms": 6566.6,
+      "max_ms": 6630.9,
+      "median_ms": 6598.8,
+      "mean_ms": 6598.8
+    },
+    "speech_first_partial": {
+      "n": 2,
+      "min_ms": 6566.6,
+      "max_ms": 6630.9,
+      "median_ms": 6598.8,
+      "mean_ms": 6598.8
+    }
+  },
+  "delta_mic_to_partial_ms": 1933.2
+}

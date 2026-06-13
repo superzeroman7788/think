@@ -1,4 +1,6 @@
-import type { AiPlanOutput, AiTaskItem, TaskType, TimeOfDay } from "./types.ts";
+import type { AiPlanOutput, AiTaskItem, DeferredItem, TaskKind, TaskType, TimeOfDay } from "./types.ts";
+import { collectTimeSemanticErrors } from "./time_semantics.ts";
+import { normalizeDeferredOps } from "./defer_semantics.ts";
 
 const TASK_TYPES = new Set<TaskType>([
   "deep_work",
@@ -19,6 +21,36 @@ export function isValidPlannedStartHhmm(value: string): boolean {
 }
 
 const AI_COMMENT_BANNED = /节奏不错|加油|真棒|很好|！|!/;
+
+/** C-11: 元话术/占位说明绝不出现在用户可见字段 */
+export const META_LANGUAGE_BANNED =
+  /请自行补充|用户未提供|未提供具体|自行补充|根据上下文|未明确提到|没有提供|信息不足|内容不足|无法确定|不清楚用户|请用户补充|请补充|placeholder|占位|自行理解|缺少具体|缺少信息|未说明/i;
+
+export function collectMetaLanguageErrors(output: {
+  ai_comment: string;
+  tasks: AiTaskItem[];
+  suggestion_tasks?: AiTaskItem[];
+}): string[] {
+  const errors: string[] = [];
+  const check = (text: string, path: string) => {
+    if (META_LANGUAGE_BANNED.test(text)) {
+      errors.push(`${path}: 含禁止的元话术,不得出现在用户面前`);
+    }
+  };
+
+  check(output.ai_comment, "ai_comment");
+  for (let i = 0; i < output.tasks.length; i++) {
+    const task = output.tasks[i];
+    check(task.title, `tasks[${i}].title`);
+    if (task.note) check(task.note, `tasks[${i}].note`);
+  }
+  for (let i = 0; i < (output.suggestion_tasks ?? []).length; i++) {
+    const task = output.suggestion_tasks![i];
+    check(task.title, `suggestion_tasks[${i}].title`);
+    if (task.note) check(task.note, `suggestion_tasks[${i}].note`);
+  }
+  return errors;
+}
 const AI_COMMENT_MAX_LEN = 200;
 
 /** rough count of distinct things user mentioned in raw_input */
@@ -74,7 +106,7 @@ export function buildJsonRetryUserMessage(
   const parts = [
     "你刚才的回复不是合法 JSON,或未通过 schema 校验。",
     "请只输出一个 JSON 对象,不要 markdown 代码块,不要任何额外说明。",
-    "tasks 里每项必填 title、task_type、time_of_day;planned_start 用 HH:MM。",
+    "tasks 里每项必填 title、task_type、time_of_day;planned_start 用 HH:MM;kind=block|point。",
     "",
     "必须修正以下问题:",
     bulletList,
@@ -115,6 +147,9 @@ function validateTaskItem(item: unknown, path: string, errors: string[]): AiTask
     "important",
     "task_type",
     "time_of_day",
+    "kind",
+    "anchor_block_start",
+    "anchor_task_id",
   ]);
   for (const k of keys) {
     if (!allowed.has(k)) errors.push(`${path}: unexpected field ${k}`);
@@ -133,14 +168,38 @@ function validateTaskItem(item: unknown, path: string, errors: string[]): AiTask
       errors.push(`${path}.planned_start: 必须是 HH:MM 格式(如 09:00),不要日期或时区`);
     }
   }
-  if (item.planned_duration !== undefined) {
+  if (item.kind === undefined) {
+    errors.push(`${path}.kind: 必填 block 或 point`);
+  }
+  let kind: TaskKind = "block";
+  if (item.kind !== undefined) {
+    const k = String(item.kind);
+    if (k !== "block" && k !== "point") {
+      errors.push(`${path}.kind: 必须是 block 或 point`);
+    } else {
+      kind = k as TaskKind;
+    }
+  }
+
+  if (kind === "point") {
+    if (item.planned_start === undefined) {
+      errors.push(`${path}: point 必须含 planned_start(HH:MM)`);
+    }
+    if (
+      item.planned_duration !== undefined &&
+      item.planned_duration !== 0 &&
+      item.planned_duration !== null
+    ) {
+      errors.push(`${path}: point 的 planned_duration 必须为 0 或省略`);
+    }
+  } else if (item.planned_duration !== undefined) {
     if (
       typeof item.planned_duration !== "number" ||
       !Number.isInteger(item.planned_duration) ||
       item.planned_duration < 5 ||
-      item.planned_duration > 240
+      item.planned_duration > 480
     ) {
-      errors.push(`${path}.planned_duration: 整数,范围 5-240`);
+      errors.push(`${path}.planned_duration: block 整数,范围 5-480`);
     }
   }
   if (item.important !== undefined && typeof item.important !== "boolean") {
@@ -161,10 +220,14 @@ function validateTaskItem(item: unknown, path: string, errors: string[]): AiTask
     title: item.title as string,
     note: item.note as string | undefined,
     planned_start: item.planned_start as string | undefined,
-    planned_duration: item.planned_duration as number | undefined,
+    planned_duration: kind === "point" ? 0 : item.planned_duration as number | undefined,
     important: item.important as boolean | undefined,
     task_type: item.task_type as TaskType,
     time_of_day: item.time_of_day as TimeOfDay,
+    kind,
+    anchor_block_start: typeof item.anchor_block_start === "string"
+      ? item.anchor_block_start
+      : undefined,
   };
 }
 
@@ -184,7 +247,7 @@ export function stripJsonFences(text: string): string {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
-export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
+export function parseAndValidatePlanOutput(raw: string, rawInput?: string, anchorDate?: string): {
   ok: true;
   value: AiPlanOutput;
 } | {
@@ -205,7 +268,7 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
   }
 
   const rootKeys = Object.keys(parsed);
-  const allowedRoot = new Set(["tasks", "suggestion_tasks", "ai_comment"]);
+  const allowedRoot = new Set(["tasks", "suggestion_tasks", "ai_comment", "deferred"]);
   for (const k of rootKeys) {
     if (!allowedRoot.has(k)) errors.push(`unexpected root field ${k}`);
   }
@@ -223,6 +286,17 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
       errors.push("suggestion_tasks must be array");
     } else if (parsed.suggestion_tasks.length > 3) {
       errors.push("suggestion_tasks length out of range");
+    }
+  }
+
+  let deferred: DeferredItem[] = [];
+  if (parsed.deferred !== undefined) {
+    if (!anchorDate) {
+      errors.push("deferred requires anchor date for validation");
+    } else {
+      const deferNorm = normalizeDeferredOps(parsed.deferred, anchorDate);
+      errors.push(...deferNorm.errors);
+      deferred = deferNorm.items;
     }
   }
 
@@ -251,12 +325,23 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
 
   if (errors.length) return { ok: false, errors };
 
+  const value: AiPlanOutput = {
+    tasks: capImportantTasks(tasks),
+    suggestion_tasks: capImportantTasks(suggestionTasks),
+    ai_comment: parsed.ai_comment as string,
+    deferred,
+  };
+
+  const metaErrors = collectMetaLanguageErrors(value);
+  if (metaErrors.length) return { ok: false, errors: metaErrors };
+
+  if (rawInput) {
+    const timeErrors = collectTimeSemanticErrors(value.tasks, rawInput);
+    if (timeErrors.length) return { ok: false, errors: timeErrors };
+  }
+
   return {
     ok: true,
-    value: {
-      tasks: capImportantTasks(tasks),
-      suggestion_tasks: capImportantTasks(suggestionTasks),
-      ai_comment: parsed.ai_comment as string,
-    },
+    value,
   };
 }

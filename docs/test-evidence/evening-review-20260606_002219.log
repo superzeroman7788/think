@@ -1,0 +1,133 @@
+
+========== setup ==========
+USER_ID=56494c0e-05f0-4a1f-a7a8-7035acc80e84
+GYM_ID=1e2736d7-3977-4c96-be2a-78507fb4b676 MAIL_ID=83d1c460-ef4d-4cbe-ab58-a3183bc78da7 REPORT_ID=bb432571-c09f-43dc-aec9-d7097cbc3eae
+
+========== TEST 1 — review-parse-voice 无 JWT → 401 ==========
+HTTP=401
+
+========== TEST 2 — review-parse-voice 健身做了邮件没做 ==========
+HTTP=200
+{
+  "review_id": "5de9ed03-14d3-4edc-8ac6-cb0b7ee045b8",
+  "provider": "deepseek",
+  "summary": "健身做了，邮件没做",
+  "proposed": [
+    {
+      "task_id": "1e2736d7-3977-4c96-be2a-78507fb4b676",
+      "title": "健身",
+      "from_status": "planned",
+      "to_status": "done"
+    },
+    {
+      "task_id": "83d1c460-ef4d-4cbe-ab58-a3183bc78da7",
+      "title": "回邮件",
+      "from_status": "planned",
+      "to_status": "skipped"
+    }
+  ],
+  "warnings": [],
+  "unclear": false
+}
+
+========== TEST 3 — review-apply 原子落库 ==========
+HTTP=200
+{
+  "ok": true,
+  "applied_count": 2,
+  "tasks": [
+    {
+      "id": "bb432571-c09f-43dc-aec9-d7097cbc3eae",
+      "title": "写报告",
+      "note": null,
+      "planned_start": "2026-06-06T01:00:00+00:00",
+      "planned_duration": 60,
+      "important": true,
+      "status": "done",
+      "actual_start": "2026-06-06T01:05:00+00:00",
+      "actual_end": "2026-06-06T02:00:00+00:00",
+      "was_rescheduled": false,
+      "reschedule_count": 0,
+      "source": "user_voice",
+      "task_type": null,
+      "time_of_day": null
+    },
+    {
+      "id": "83d1c460-ef4d-4cbe-ab58-a3183bc78da7",
+      "title": "回邮件",
+      "note": null,
+      "planned_start": "2026-06-06T08:00:00+00:00",
+      "planned_duration": 20,
+      "important": false,
+      "status": "skipped",
+      "actual_start": null,
+      "actual_end": null,
+      "was_rescheduled": false,
+      "reschedule_count": 0,
+      "source": "user_voice",
+      "task_type": null,
+      "time_of_day": null
+    },
+    {
+      "id": "1e2736d7-3977-4c96-be2a-78507fb4b676",
+      "title": "健身",
+      "note": null,
+      "planned_start": "2026-06-06T10:00:00+00:00",
+      "planned_duration": 45,
+      "important": false,
+      "status": "done",
+      "actual_start": null,
+      "actual_end": "2026-06-05T14:22:30.880515+00:00",
+      "was_rescheduled": false,
+      "reschedule_count": 0,
+      "source": "user_voice",
+      "task_type": null,
+      "time_of_day": null
+    }
+  ]
+}
+
+========== TEST 4 — 重复 apply → 非 200 ==========
+HTTP=400
+
+========== TEST 5 — REVIEW_STALE 409（基线变后 apply） ==========
+HTTP=409 body={"error":{"code":"REVIEW_STALE","message":"今天的记录刚才变过了，请看一下新的再确认。","retryable":true}}
+
+========== TEST 6 — day-summary 持久化 ai_summary ==========
+HTTP=200
+{
+  "provider": "deepseek",
+  "summary": "今天3件事完成2件，1件跳过，重要完成1件，深度完成0件，明天继续推进深度工作。"
+}
+true
+
+========== TEST 7 — reflection-probe 持久化 ai_probe ==========
+HTTP=200
+{
+  "provider": "deepseek",
+  "probe": "你注意到健身的实际结束时间比计划开始还早，是提前完成了还是记录有误？",
+  "candidate_memory": "健身任务的时间记录存在异常，实际结束早于计划开始，可能需核对时间戳",
+  "pattern_hint": "time_anomaly_detection"
+}
+true
+
+========== TEST 8 — memory-add confirmed_by_user=false → 400 ==========
+HTTP=400 body={"error":{"code":"INVALID_REQUEST","message":"记忆须经用户确认后才能保存","retryable":false}}
+
+========== TEST 9 — memory-add 确认落库 memories + daily_reflections ==========
+HTTP=200
+{
+  "id": "7adbb05c-d132-44f1-a512-1f3e34ed9f84",
+  "text": "下午深度任务容易被会议挤掉",
+  "source": "reflection",
+  "confirmed_by_user": true,
+  "added_at": "2026-06-05T14:22:53.589887+00:00",
+  "reflection": {
+    "date": "2026-06-06",
+    "user_response": "对，下午一有会我就往后拖深度活",
+    "promoted_memory": "7adbb05c-d132-44f1-a512-1f3e34ed9f84"
+  }
+}
+true
+
+========== PASS — evidence: supabase/tests/../../docs/test-evidence/evening-review-20260606_002219.log ==========

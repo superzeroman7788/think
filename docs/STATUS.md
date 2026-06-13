@@ -21,6 +21,7 @@
 
 ## 后端(Cursor)
 
+- **最近完成**:2026-06-06 晚上复盘腿 5 个 edge fn 部署 + 生产验收全绿（`evening-review-20260606_002219.log`）
 - **进行中**:routine 两闸门已批,按任务 #1/#2 推进 routines 表 + plan-generate 并入方案 B;待 cursor 交 result 卡与测试证据
 - **2026-05-31**:routine 字段说明已补充到 `docs/routine-field-hints.md`(repeat_days 0=周日..6=周六;default_time=time+timezone 合成 ISO)
 - **2026-05-31**:Agent Room MCP 传输层真接入验收完成(老板 UI 派活 #4 → cursor MCP 报状态 → HTTP 结果卡);见 `docs/agent-room-mcp-validation-2026-05-31.md`
@@ -58,6 +59,11 @@
 
 **notes 表**:`text, source, promoted_to_task, archived_at`(随手记,前端 UI 待做)
 
+**POST /functions/v1/asr-session**(带 JWT,契约见 `docs/asr-session-contract.md`)
+- 请求:`{ sample_rate: 16000, format: "pcm" }`
+- 成功:`{ ws_url, sample_rate, expires_at }`(epoch_ms;**零密钥 JSON**)
+- 错误:`ASR_QUOTA_EXCEEDED` | `ASR_NOT_CONFIGURED` | `UNAUTHORIZED`
+
 ---
 
 ## 待人确认(PM 审核区)
@@ -69,5 +75,8 @@
 
 ## 排队中(还没开工)
 
-- 后端:/plan/revise(白天重排)、/reflect(晚间反思)
-- 前端:白天执行屏、随手记 UI
+- 后端:`plan-revise` + `plan-revise-apply` **已部署**（证据 `docs/test-evidence/plan-revise-2026-06-05.log`）
+- 后端:晚上复盘腿 **已部署**（`review-parse-voice` / `review-apply` / `day-summary` / `reflection-probe` / `memory-add`；证据 `docs/test-evidence/evening-review-20260606_002219.log`；契约 `docs/BE_evening-review_接口契约.md` v1.0）
+- 前端:块一执行屏（FE 直 PATCH）+ 块二 diff UI → apply；块三推送等 JPush/APNs
+
+**plan-revise v1.1 锁定(2026-06-04):** propose 计配额+存 baseline; apply 原子 RPC+`APPLY_STALE`; diff 三态; 已开始(`actual_start`)不可 moved; 变当前写 actual_start、跳过不写; 块一单条 PATCH

@@ -1,0 +1,24 @@
+
+========== setup ==========
+USER_ID=ec8ff1d7-8fe9-4f6a-838b-f9217a495a88
+
+========== TEST 1 — capture with date hint ==========
+HTTP=200
+{
+  "id": "b7729266-6bb0-4de2-a0d0-d1b89b865e32",
+  "title": "发报告",
+  "due_date": "2026-06-11",
+  "due_part": "afternoon",
+  "provider": "deepseek"
+}
+
+========== TEST 2 — capture no date ==========
+
+========== TEST 3 — badge counts due pending ==========
+
+========== TEST 4 — add_today transaction ==========
+HTTP=200 {"ok":true,"inbox_id":"b7729266-6bb0-4de2-a0d0-d1b89b865e32","task_id":"6a5efd7e-5f2d-438a-a8e1-ef2e5b5e94ce"}
+
+========== TEST 5 — dismiss reduces badge ==========
+
+========== PASS — evidence: /Users/bryan/think/supabase/tests/../../docs/test-evidence/inbox-20260610_172314.log ==========

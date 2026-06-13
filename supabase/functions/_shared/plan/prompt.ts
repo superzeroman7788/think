@@ -1,5 +1,7 @@
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
+import { buildDeferToInboxHint } from "./defer_semantics.ts";
+
 let cachedTemplate: string | null = null;
 
 export function setPlanGenerateTemplate(template: string): void {
@@ -46,8 +48,10 @@ export const OUTPUT_SCHEMA_HINT = `{
           "title": { "type": "string", "maxLength": 60 },
           "note": { "type": "string", "maxLength": 100 },
           "planned_start": { "type": "string", "pattern": "^[0-9]{2}:[0-9]{2}$" },
-          "planned_duration": { "type": "integer", "minimum": 5, "maximum": 240 },
+          "planned_duration": { "type": "integer", "minimum": 0, "maximum": 480 },
           "important": { "type": "boolean" },
+          "kind": { "enum": ["block", "point"] },
+          "anchor_block_start": { "type": "string", "pattern": "^[0-9]{2}:[0-9]{2}$" },
           "task_type": { "enum": ["deep_work","admin","social","health","errand","recovery"] },
           "time_of_day": { "enum": ["morning","midday","afternoon","evening"] }
         }
@@ -58,7 +62,21 @@ export const OUTPUT_SCHEMA_HINT = `{
       "maxItems": 3,
       "items": { "$ref": "#/properties/tasks/items" }
     },
-    "ai_comment": { "type": "string", "maxLength": 200, "description": "1-3 lines separated by \\n, length matches user input" }
+    "ai_comment": { "type": "string", "maxLength": 200, "description": "1-3 lines separated by \\n, length matches user input" },
+    "deferred": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "非今天的事 → 收件箱,不进 tasks",
+      "items": {
+        "type": "object",
+        "required": ["title", "due_date"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 80 },
+          "due_date": { "type": "string", "pattern": "^\\\\d{4}-\\\\d{2}-\\\\d{2}$" },
+          "due_part": { "enum": ["morning", "afternoon", "evening"] }
+        }
+      }
+    }
   }
 }`;
 
@@ -111,7 +129,7 @@ export async function renderPlanPrompt(vars: PromptVars): Promise<{ system: stri
   const system = (systemMatch?.[1] ?? "").trim();
   const user = (userMatch?.[1] ?? "").trim();
 
-  const userWithSchema = `${user}\n\nJSON schema:\n${OUTPUT_SCHEMA_HINT}`;
+  const userWithSchema = `${user}\n\n${buildDeferToInboxHint(vars.date)}\n\nJSON schema:\n${OUTPUT_SCHEMA_HINT}`;
 
   return { system, user: userWithSchema };
 }

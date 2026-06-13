@@ -1,0 +1,68 @@
+{
+  "ts": "20260606T105815Z",
+  "runs_per_path": 2,
+  "warm_idle_s": 15.0,
+  "cold": {
+    "runs": [
+      {
+        "path": "cold",
+        "connect_ms": 252.8,
+        "press_to_first_partial_ms": 30808.2,
+        "speech_first_partial_ms": 8282.0
+      },
+      {
+        "path": "cold",
+        "connect_ms": 254.2,
+        "press_to_first_partial_ms": 30806.2,
+        "speech_first_partial_ms": 8336.8
+      }
+    ],
+    "press_to_first_partial": {
+      "n": 2,
+      "min_ms": 30806.2,
+      "max_ms": 30808.2,
+      "median_ms": 30807.2,
+      "mean_ms": 30807.2
+    },
+    "connect": {
+      "n": 2,
+      "min_ms": 252.8,
+      "max_ms": 254.2,
+      "median_ms": 253.5,
+      "mean_ms": 253.5
+    }
+  },
+  "hot": {
+    "runs": [
+      {
+        "path": "hot",
+        "connect_ms": 229.2,
+        "warm_idle_s": 15.0,
+        "press_to_first_partial_ms": 30393.1,
+        "speech_first_partial_ms": 6595.5
+      },
+      {
+        "path": "hot",
+        "connect_ms": 147.4,
+        "warm_idle_s": 15.0,
+        "press_to_first_partial_ms": 30396.8,
+        "speech_first_partial_ms": 6666.4
+      }
+    ],
+    "press_to_first_partial": {
+      "n": 2,
+      "min_ms": 30393.1,
+      "max_ms": 30396.8,
+      "median_ms": 30394.9,
+      "mean_ms": 30394.9
+    },
+    "speech_first_partial": {
+      "n": 2,
+      "min_ms": 6595.5,
+      "max_ms": 6666.4,
+      "median_ms": 6630.9,
+      "mean_ms": 6630.9
+    }
+  },
+  "delta_press_to_partial_ms": 412.3
+}

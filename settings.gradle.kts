@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ThinkAndAct"
-include(":app")
+include(":app", ":shared")

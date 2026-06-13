@@ -372,6 +372,57 @@ verify_jwt = false
 [functions.plan-generate]
 verify_jwt = true
 
+[functions.asr-session]
+verify_jwt = true
+
+[functions.asr-usage]
+verify_jwt = true
+
+[functions.asr-relay]
+verify_jwt = true
+
+[functions.routine-parse]
+verify_jwt = true
+
+[functions.plan-revise]
+verify_jwt = true
+
+[functions.plan-revise-apply]
+verify_jwt = true
+
+[functions.review-parse-voice]
+verify_jwt = true
+
+[functions.review-apply]
+verify_jwt = true
+
+[functions.day-summary]
+verify_jwt = true
+
+[functions.reflection-probe]
+verify_jwt = true
+
+[functions.memory-add]
+verify_jwt = true
+
+[functions.inbox-capture]
+verify_jwt = true
+
+[functions.inbox-list]
+verify_jwt = true
+
+[functions.inbox-update]
+verify_jwt = true
+
+[functions.inbox-badge]
+verify_jwt = true
+
+[functions.auth-sms-send]
+verify_jwt = false
+
+[functions.auth-sms-login]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
@@ -388,6 +439,25 @@ DEEPSEEK_API_KEY = "env(DEEPSEEK_API_KEY)"
 QWEN_API_KEY = "env(QWEN_API_KEY)"
 KIMI_API_KEY = "env(KIMI_API_KEY)"
 OPENAI_API_KEY = "env(OPENAI_API_KEY)"
+TENCENT_ASR_APP_ID = "env(TENCENT_ASR_APP_ID)"
+TENCENT_ASR_SECRET_ID = "env(TENCENT_ASR_SECRET_ID)"
+TENCENT_ASR_SECRET_KEY = "env(TENCENT_ASR_SECRET_KEY)"
+TENCENT_ASR_SESSION_TTL_SECONDS = "env(TENCENT_ASR_SESSION_TTL_SECONDS)"
+TENCENT_ASR_DAILY_SESSION_LIMIT = "env(TENCENT_ASR_DAILY_SESSION_LIMIT)"
+ASR_PROVIDER = "env(ASR_PROVIDER)"
+VOLCANO_ASR_ENABLED = "env(VOLCANO_ASR_ENABLED)"
+VOLCANO_ASR_APP_ID = "env(VOLCANO_ASR_APP_ID)"
+VOLCANO_ASR_ACCESS_TOKEN = "env(VOLCANO_ASR_ACCESS_TOKEN)"
+VOLCANO_ASR_SECRET_KEY = "env(VOLCANO_ASR_SECRET_KEY)"
+VOLCANO_ASR_CLUSTER = "env(VOLCANO_ASR_CLUSTER)"
+VOLCANO_ASR_INSTANCE_ID = "env(VOLCANO_ASR_INSTANCE_ID)"
+VOLCANO_ASR_RESOURCE_ID = "env(VOLCANO_ASR_RESOURCE_ID)"
+VOLCANO_ASR_RELAY_MODE = "env(VOLCANO_ASR_RELAY_MODE)"
+VOLC_ASR_APP_ID = "env(VOLC_ASR_APP_ID)"
+VOLC_ASR_ACCESS_TOKEN = "env(VOLC_ASR_ACCESS_TOKEN)"
+VOLC_ASR_SECRET_KEY = "env(VOLC_ASR_SECRET_KEY)"
+VOLC_ASR_CLUSTER = "env(VOLC_ASR_CLUSTER)"
+VOLC_ASR_INSTANCE_ID = "env(VOLC_ASR_INSTANCE_ID)"
 
 [analytics]
 enabled = false

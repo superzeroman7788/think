@@ -1,0 +1,8 @@
+# 由 project.yml 通过 XcodeGen 生成，可随时 `xcodegen generate` 重建，不入库（避免再次"工程文件丢了"）。
+iosApp.xcodeproj/
+
+# 构建产物
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/

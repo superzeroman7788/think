@@ -1,0 +1,34 @@
+# plan-revise v1.3 真机联调证据 · 2026-06-07
+# FE build: d354eb34 (vivo 10AE3Z13YU002EL, hash 已验)
+# BE: reject_reason/applicable + HTTP error.message 已部署 (Cursor 2026-06-07)
+
+## #1 进执行屏「变当前」→ 无单独 PATCH actual_start  ✅ 真机 DB 验
+seed: planned 任务「联调当前」09:00/60min, actual_start=null
+进执行屏(变当前) → GET tasks:
+  [{"title":"联调当前","status":"planned","actual_start":null}]
+→ FE 不再写 actual_start(旧代码会写 now)。真凶根除。
+
+## #2 对脏 actual_start 的当前任务「推一小时」→ moved(不再全 unchanged)  ✅ BE 契约验(curl)
+请求 plan-revise: 健身 status=planned 且 actual_start=09:05(脏), instruction=「把健身推迟一个小时」
+响应: HTTP 200 applicable=true
+  revisions: [健身 change=moved after.planned_start=10:00 started=true, 写文档 unchanged]
+→ 脏 actual_start 不再锁 moved(started=true 仅信息);apply 会清 actual_start(BE v1.2)。
+  [through-app 语音 UI(说"推一小时"出 moved diff)= 老板真机语音 pass 补截图]
+
+## #3 胡言乱语 → applicable=false + reject_reason(无静默拒)  ✅ BE 契约验(curl)
+请求 instruction=「啊这个那个随便说点啥嗯」
+响应: HTTP 200 applicable=false
+  reject_reason="指令内容不明确，无法执行日程调整。请提供具体操作，如移动、删除或添加任务。"
+  warnings=[同上]
+→ 后端必带 reason;FE 照实显示(不再「没听出要改什么」),Logcat 无 FeDebug.reject 静默拒告警。
+  [through-app 语音 UI 截图 = 老板真机语音 pass]
+
+## #4 HTTP 错误 → 探照灯显示后端 error.message  ✅ 真机验
+按住语音(配额已满 429):
+  FE_DEBUG: ✗ 后端 | /asr-usage → HTTP 429 [ASR_QUOTA_EXCEEDED] | {"error":{"code":"ASR_QUOTA_EXCEEDED","message":"今天的语音转写次数用完了,可以先用文字描述今天。","retryable":false}}
+→ 探照灯按层(后端)+ endpoint + status + code + 原始 message 摊开;plan-revise 同款 FeDebug.backend 已接。
+
+## 状态
+- #1 ✅真机DB · #2/#3 ✅BE契约(curl) · #4 ✅真机探照灯
+- 余:#2/#3 的 through-app **语音** UI 截图 —— 需老板在 build d354eb34 上按住说话(我无法对设备说话/ASR配额今日已满)。
+- 这一步老板语音 pass 后 → v1.3 locked。

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Think &amp; Act</string>
+    <string name="sc_capture_short">记一笔</string>
+    <string name="sc_capture_long">记一笔到收件箱</string>
+    <string name="sc_inbox_short">收件箱</string>
+    <string name="sc_inbox_long">打开收件箱</string>
 </resources>

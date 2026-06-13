@@ -2,13 +2,26 @@ import { AllProvidersDownError, createDefaultLLMAdapter } from "../llm/adapter.t
 import type { LLMAdapter, LLMMessage } from "../llm/types.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
+  isInsufficientPlanInput,
+  NeedsClarificationError,
+  pickClarificationMessage,
+} from "./input_gate.ts";
+import { dedupePlanTasks } from "./dedupe.ts";
+import { collectBlockOverlapErrors, resolveBlockOverlaps } from "./block_scheduler.ts";
+import {
+  appendPlacementNotes,
+  applyPlacementAnchor,
+  clampUnintendedCrossMidnight,
+} from "./placement_semantics.ts";
+import { attachPointAnchorStarts, finalizePlanTaskSemantics } from "./time_semantics.ts";
+import {
   OUTPUT_SCHEMA_HINT,
   formatHardConstraints,
   formatMemoriesBullets,
   renderPlanPrompt,
   weekdayZh,
 } from "./prompt.ts";
-import { buildJsonRetryUserMessage, parseAndValidatePlanOutput } from "./schema.ts";
+import { buildJsonRetryUserMessage, collectMetaLanguageErrors, parseAndValidatePlanOutput } from "./schema.ts";
 import { plannedStartToIso } from "./timezone.ts";
 import type {
   AiPlanOutput,
@@ -17,6 +30,7 @@ import type {
   PlanGenerateResponse,
   PlanTaskResponse,
   TaskSource,
+  TaskStatus,
 } from "./types.ts";
 
 const JSON_ATTEMPT_TEMPS = [0.5, 0.25, 0.15, 0.05] as const;
@@ -54,8 +68,12 @@ function normalizePlannedStarts(
   }));
 }
 
-function withSource(tasks: AiTaskItem[], source: TaskSource): PlanTaskResponse[] {
-  return tasks.map((t) => ({ ...t, source }));
+function withSource(
+  tasks: AiTaskItem[],
+  source: TaskSource,
+  status: TaskStatus = "planned",
+): PlanTaskResponse[] {
+  return tasks.map((t) => ({ ...t, source, status }));
 }
 
 function weekdayIndex(date: string): number {
@@ -211,7 +229,7 @@ export async function completePlanJson(
     messages,
     json_mode: true,
     temperature,
-    max_tokens: 2048,
+    max_tokens: 1024,
   });
   return { content: res.content, provider: res.provider };
 }
@@ -220,18 +238,31 @@ export async function generatePlanWithLlm(
   messages: LLMMessage[],
   adapter: LLMAdapter,
   rawInput: string,
+  anchorDate: string,
   forceInvalidJson = false,
-): Promise<AiPlanOutput & { provider: "deepseek" | "qwen" | "kimi" }> {
+): Promise<
+  AiPlanOutput & { provider: "deepseek" | "qwen" | "kimi"; llmAttempts: number; llmMs: number }
+> {
+  const llmStart = performance.now();
+  let llmAttempts = 0;
   let conversation: LLMMessage[] = messages;
+  llmAttempts++;
   let llm = await completePlanJson(
     conversation,
     JSON_ATTEMPT_TEMPS[0],
     adapter,
     forceInvalidJson,
   );
-  let validated = parseAndValidatePlanOutput(llm.content, rawInput);
+  let validated = parseAndValidatePlanOutput(llm.content, rawInput, anchorDate);
 
-  if (validated.ok) return { ...validated.value, provider: llm.provider };
+  if (validated.ok) {
+    return {
+      ...validated.value,
+      provider: llm.provider,
+      llmAttempts,
+      llmMs: Math.round(performance.now() - llmStart),
+    };
+  }
 
   for (let attempt = 1; attempt < JSON_ATTEMPT_TEMPS.length; attempt++) {
     console.log(
@@ -248,23 +279,43 @@ export async function generatePlanWithLlm(
       },
     ];
 
+    llmAttempts++;
     llm = await completePlanJson(
       conversation,
       JSON_ATTEMPT_TEMPS[attempt],
       adapter,
       false,
     );
-    validated = parseAndValidatePlanOutput(llm.content, rawInput);
+    validated = parseAndValidatePlanOutput(llm.content, rawInput, anchorDate);
 
     if (validated.ok) {
       console.log(`[plan/generate] json validation recovered on attempt=${attempt + 1}`);
-      return { ...validated.value, provider: llm.provider };
+      return {
+        ...validated.value,
+        provider: llm.provider,
+        llmAttempts,
+        llmMs: Math.round(performance.now() - llmStart),
+      };
     }
+  }
+
+  const metaOnly = validated.errors.length > 0 &&
+    validated.errors.every((e) => e.includes("元话术"));
+  if (metaOnly) {
+    const userLine = rawInput.split("\n\n")[0] ?? rawInput;
+    throw new NeedsClarificationError(pickClarificationMessage(userLine));
   }
 
   const err = new Error("AI_INVALID_JSON");
   err.name = "AI_INVALID_JSON";
   throw err;
+}
+
+function assertNoMetaLanguageOutput(output: AiPlanOutput, rawInput: string): void {
+  const metaErrors = collectMetaLanguageErrors(output);
+  if (metaErrors.length) {
+    throw new NeedsClarificationError(pickClarificationMessage(rawInput));
+  }
 }
 
 export async function buildPlanGenerateResponse(
@@ -274,8 +325,10 @@ export async function buildPlanGenerateResponse(
   userTaskSource: TaskSource = "user_voice",
   deps: GeneratePlanDeps = {},
 ): Promise<PlanGenerateResponse> {
+  const t0 = performance.now();
   const adapter = deps.adapter ?? createDefaultLLMAdapter();
 
+  const tProfile = performance.now();
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("memory_enabled, timezone, tone_preference")
@@ -283,18 +336,25 @@ export async function buildPlanGenerateResponse(
     .maybeSingle();
 
   if (profileError) throw profileError;
+  const profileMs = Math.round(performance.now() - tProfile);
 
   const memoryEnabled = profile?.memory_enabled ?? true;
-  const memoryTexts = await loadMemories(supabase, userId, memoryEnabled);
-  const memoriesBullets = formatMemoriesBullets(memoryTexts);
   const timeZone = profile?.timezone ?? "Asia/Shanghai";
-  const routines = await loadTodayRoutines(supabase, userId, req.date);
+
+  const tParallel = performance.now();
+  const [memoryTexts, routines] = await Promise.all([
+    loadMemories(supabase, userId, memoryEnabled),
+    loadTodayRoutines(supabase, userId, req.date),
+  ]);
+  const dbParallelMs = Math.round(performance.now() - tParallel);
+  const memoriesBullets = formatMemoriesBullets(memoryTexts);
 
   const routinePromptBlock = buildRoutinePromptBlock(routines);
   const rawInputWithRoutines = routinePromptBlock
     ? `${req.raw_input}\n\n${routinePromptBlock}`
     : req.raw_input;
 
+  const tPrompt = performance.now();
   const { system, user } = await renderPlanPrompt({
     date: req.date,
     weekday: weekdayZh(req.date),
@@ -302,6 +362,7 @@ export async function buildPlanGenerateResponse(
     hardConstraints: formatHardConstraints(req.hard_constraints),
     rawInput: rawInputWithRoutines,
   });
+  const promptMs = Math.round(performance.now() - tPrompt);
 
   const messages: LLMMessage[] = [
     { role: "system", content: system },
@@ -312,28 +373,87 @@ export async function buildPlanGenerateResponse(
     messages,
     adapter,
     rawInputWithRoutines,
+    req.date,
     deps.forceInvalidJson ?? false,
   );
 
-  const aiTasksWithoutRoutineDup = dedupeAiTasksByRoutineTitles(aiOutput.tasks, routines);
+  assertNoMetaLanguageOutput(
+    {
+      tasks: aiOutput.tasks,
+      suggestion_tasks: aiOutput.suggestion_tasks,
+      ai_comment: aiOutput.ai_comment,
+      deferred: aiOutput.deferred,
+    },
+    req.raw_input,
+  );
+
+  const tasksBeforeDedupe = aiOutput.tasks.length;
+  const dedupedAiTasks = finalizePlanTaskSemantics(
+    dedupePlanTasks(aiOutput.tasks),
+    req.raw_input,
+  );
+  if (dedupedAiTasks.length < tasksBeforeDedupe) {
+    console.log(
+      `[plan/generate] dedupe merged tasks ${tasksBeforeDedupe} -> ${dedupedAiTasks.length}`,
+    );
+  }
+
+  const aiTasksWithoutRoutineDup = dedupeAiTasksByRoutineTitles(dedupedAiTasks, routines);
+  const { tasks: placementTasks, placementNotes } = applyPlacementAnchor(
+    aiTasksWithoutRoutineDup,
+    req.raw_input,
+    req.date,
+    timeZone,
+  );
+  const scheduledTasks = attachPointAnchorStarts(
+    resolveBlockOverlaps(
+      clampUnintendedCrossMidnight(placementTasks, req.raw_input),
+    ),
+  );
+  const overlapErrors = collectBlockOverlapErrors(scheduledTasks);
+  if (overlapErrors.length) {
+    console.error("[plan/generate] block overlap after resolve:", overlapErrors);
+    throw new Error("PLAN_BLOCK_OVERLAP");
+  }
+
   const routineTasks = routines.map((routine) => routineToTask(routine, req.date, timeZone));
-  const tasks = normalizePlannedStarts(aiTasksWithoutRoutineDup, req.date, timeZone);
+  const tasks = normalizePlannedStarts(scheduledTasks, req.date, timeZone);
   const suggestionTasks = normalizePlannedStarts(
     aiOutput.suggestion_tasks ?? [],
     req.date,
     timeZone,
   );
 
-  return {
+  const response = {
     proposal_id: crypto.randomUUID(),
     provider: aiOutput.provider,
     tasks: [
       ...withSource(routineTasks, "routine"),
       ...withSource(tasks, userTaskSource),
     ],
-    suggestion_tasks: withSource(suggestionTasks, "ai_suggestion"),
-    ai_comment: aiOutput.ai_comment,
+    suggestion_tasks: withSource(suggestionTasks, "ai_suggestion", "suggested"),
+    ai_comment: appendPlacementNotes(aiOutput.ai_comment, placementNotes),
+    deferred: aiOutput.deferred ?? [],
   };
+
+  console.log(JSON.stringify({
+    event: "plan_generate_timing",
+    user_id: userId,
+    date: req.date,
+    profile_ms: profileMs,
+    db_parallel_ms: dbParallelMs,
+    prompt_ms: promptMs,
+    llm_ms: aiOutput.llmMs,
+    llm_attempts: aiOutput.llmAttempts,
+    tasks_before_dedupe: tasksBeforeDedupe,
+    tasks_after_dedupe: dedupedAiTasks.length,
+    routines: routines.length,
+    memories: memoryTexts.length,
+    tasks_out: response.tasks.length,
+    build_ms: Math.round(performance.now() - t0),
+  }));
+
+  return response;
 }
 
 export { AllProvidersDownError, isTimeoutError };

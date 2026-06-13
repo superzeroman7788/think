@@ -1,0 +1,235 @@
+{
+  "fixture": "docs/test-evidence/fixtures/asr-test-16k.pcm",
+  "rounds": 3,
+  "pause_sec": 1.0,
+  "expected_phrase": "你好今天天气不错",
+  "tencent_runs": [
+    {
+      "provider": "tencent",
+      "connect_mode": "direct",
+      "round_index": 1,
+      "ok": true,
+      "error": null,
+      "transcript": "你好，今天天气不错。",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 0.4414169816300273,
+      "connect_ms": 16.789625049568713,
+      "first_partial_ms": 879.4922910165042,
+      "final_ms": 2832.6775000896305,
+      "total_ms": 3110.31941708643,
+      "partial_count": 5,
+      "partials": [
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天天",
+        "你好，今天天气不错。"
+      ]
+    },
+    {
+      "provider": "tencent",
+      "connect_mode": "direct",
+      "round_index": 2,
+      "ok": true,
+      "error": null,
+      "transcript": "你好，今天天气不错。",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 0.16783305909484625,
+      "connect_ms": 18.523541977629066,
+      "first_partial_ms": 773.3687090221792,
+      "final_ms": 2801.9304999615997,
+      "total_ms": 2969.6736660553142,
+      "partial_count": 5,
+      "partials": [
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天天",
+        "你好，今天天气不错。"
+      ]
+    },
+    {
+      "provider": "tencent",
+      "connect_mode": "direct",
+      "round_index": 3,
+      "ok": true,
+      "error": null,
+      "transcript": "你好，今天天气不错。",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 0.2560419961810112,
+      "connect_ms": 81.18891704361886,
+      "first_partial_ms": 750.229167053476,
+      "final_ms": 2822.8198339929804,
+      "total_ms": 2970.098291989416,
+      "partial_count": 5,
+      "partials": [
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天天",
+        "你好，今天天气不错。"
+      ]
+    }
+  ],
+  "volcano_runs": [
+    {
+      "provider": "volcano",
+      "connect_mode": "relay",
+      "round_index": 1,
+      "ok": true,
+      "error": null,
+      "transcript": "你好今天天气不错",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 2345.611416036263,
+      "connect_ms": 1239.6796660032123,
+      "first_partial_ms": 1748.8754999358207,
+      "final_ms": 3204.1044159559533,
+      "total_ms": 5739.176417002454,
+      "partial_count": 8,
+      "partials": [
+        "你",
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天",
+        "你好今天天",
+        "你好今天天",
+        "你好今天天气不错"
+      ]
+    },
+    {
+      "provider": "volcano",
+      "connect_mode": "relay",
+      "round_index": 2,
+      "ok": true,
+      "error": null,
+      "transcript": "你好今天天气不错",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 2063.849875004962,
+      "connect_ms": 758.414666983299,
+      "first_partial_ms": 1669.225874939002,
+      "final_ms": 3147.975333966315,
+      "total_ms": 5219.71770899836,
+      "partial_count": 8,
+      "partials": [
+        "你",
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天",
+        "你好今天天",
+        "你好今天天",
+        "你好今天天气不错"
+      ]
+    },
+    {
+      "provider": "volcano",
+      "connect_mode": "relay",
+      "round_index": 3,
+      "ok": true,
+      "error": null,
+      "transcript": "你好今天天气不错",
+      "expected_phrase": "你好今天天气不错",
+      "session_ms": 1961.561750038527,
+      "connect_ms": 470.03733401652426,
+      "first_partial_ms": 1618.2896249229088,
+      "final_ms": 3152.0630000159144,
+      "total_ms": 5085.497167077847,
+      "partial_count": 8,
+      "partials": [
+        "你",
+        "你好",
+        "你好",
+        "你好今",
+        "你好今天",
+        "你好今天天",
+        "你好今天天",
+        "你好今天天气不错"
+      ]
+    }
+  ],
+  "tencent_summary": {
+    "session_ms": {
+      "n": 3,
+      "min": 0.16783305909484625,
+      "max": 0.4414169816300273,
+      "mean": 0.28843067896862823,
+      "median": 0.2560419961810112,
+      "p95": 0.4414169816300273
+    },
+    "connect_ms": {
+      "n": 3,
+      "min": 16.789625049568713,
+      "max": 81.18891704361886,
+      "mean": 38.83402802360555,
+      "median": 18.523541977629066,
+      "p95": 81.18891704361886
+    },
+    "first_partial_ms": {
+      "n": 3,
+      "min": 750.229167053476,
+      "max": 879.4922910165042,
+      "mean": 801.0300556973865,
+      "median": 773.3687090221792,
+      "p95": 879.4922910165042
+    },
+    "final_ms": {
+      "n": 3,
+      "min": 2801.9304999615997,
+      "max": 2832.6775000896305,
+      "mean": 2819.14261134807,
+      "median": 2822.8198339929804,
+      "p95": 2832.6775000896305
+    },
+    "total_ms": {
+      "n": 3,
+      "min": 2969.6736660553142,
+      "max": 3110.31941708643,
+      "mean": 3016.69712504372,
+      "median": 2970.098291989416,
+      "p95": 3110.31941708643
+    }
+  },
+  "volcano_summary": {
+    "session_ms": {
+      "n": 3,
+      "min": 1961.561750038527,
+      "max": 2345.611416036263,
+      "mean": 2123.674347026584,
+      "median": 2063.849875004962,
+      "p95": 2345.611416036263
+    },
+    "connect_ms": {
+      "n": 3,
+      "min": 470.03733401652426,
+      "max": 1239.6796660032123,
+      "mean": 822.7105556676785,
+      "median": 758.414666983299,
+      "p95": 1239.6796660032123
+    },
+    "first_partial_ms": {
+      "n": 3,
+      "min": 1618.2896249229088,
+      "max": 1748.8754999358207,
+      "mean": 1678.7969999325771,
+      "median": 1669.225874939002,
+      "p95": 1748.8754999358207
+    },
+    "final_ms": {
+      "n": 3,
+      "min": 3147.975333966315,
+      "max": 3204.1044159559533,
+      "mean": 3168.0475833127275,
+      "median": 3152.0630000159144,
+      "p95": 3204.1044159559533
+    },
+    "total_ms": {
+      "n": 3,
+      "min": 5085.497167077847,
+      "max": 5739.176417002454,
+      "mean": 5348.13043102622,
+      "median": 5219.71770899836,
+      "p95": 5739.176417002454
+    }
+  }
+}

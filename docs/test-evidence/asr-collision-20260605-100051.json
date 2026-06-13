@@ -1,0 +1,49 @@
+{
+  "fixture": "docs/test-evidence/fixtures/asr-test-16k.pcm",
+  "expected_phrase": "你好今天天气不错",
+  "tencent": {
+    "provider": "tencent",
+    "connect_mode": "direct",
+    "ok": true,
+    "error": null,
+    "transcript": "你好，今天天气不错。",
+    "expected_phrase": "你好今天天气不错",
+    "session_ms": 0.21974998526275158,
+    "connect_ms": 98.94891607109457,
+    "first_partial_ms": 839.3631250364706,
+    "final_ms": 2795.734666986391,
+    "total_ms": 3001.223999890499,
+    "partial_count": 5,
+    "partials": [
+      "你好",
+      "你好",
+      "你好今",
+      "你好今天天",
+      "你好，今天天气不错。"
+    ]
+  },
+  "volcano": {
+    "provider": "volcano",
+    "connect_mode": "relay",
+    "ok": true,
+    "error": null,
+    "transcript": "你好今天天气不错",
+    "expected_phrase": "你好今天天气不错",
+    "session_ms": 2525.2722919685766,
+    "connect_ms": 958.0874580424279,
+    "first_partial_ms": 1750.1667919568717,
+    "final_ms": 3121.4329169597477,
+    "total_ms": 5345.589000033215,
+    "partial_count": 8,
+    "partials": [
+      "你",
+      "你好",
+      "你好",
+      "你好今",
+      "你好今天",
+      "你好今天天",
+      "你好今天天",
+      "你好今天天气不错"
+    ]
+  }
+}

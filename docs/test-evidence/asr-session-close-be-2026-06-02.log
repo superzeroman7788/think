@@ -1,0 +1,14 @@
+=== TEST 1: asr-session 200 + zero key material in JSON ===
+{"ws_url": "wss://asr.cloud.tencent.com/asr/v2/1438211106?engine_model_type=16k_zh&expired=1780548227&needvad=1&nonce=2346473339&secretid=AKIDASm8MNB99mJenjdMH2EG6jAOvNc6SdbM&timestamp=1780547927&voice_format=1&voice_id=fc86f517-c8c3-4e9b-b582-5d99fd0cf82b&signature=GRtlPpVgQijmXCRDulIvhdKbDps%3D", "sample_rate": 16000, "expires_at": 1780548227000}
+OK
+
+=== TEST 2: WebSocket PCM -> Chinese transcript ===
+handshake: {'code': 0, 'message': 'success', 'voice_id': 'fc86f517-c8c3-4e9b-b582-5d99fd0cf82b'}
+transcript: '你好，今天天气不错。'
+OK
+
+=== TEST 3: expired ws_url rejected ===
+OK expired rejected: code=4002 message=签名过期。Timestamp 和服务器时间相差不得超过五分钟，请检查本地时间是否和标准时间同步。
+
+=== TEST 4: daily quota (fresh user) ===
+OK quota exceeded on attempt 21: {"error":{"code":"ASR_QUOTA_EXCEEDED","message":"今天的语音转写次数用完了,可以先用文字描述今天。","retryable":false}}

@@ -1,0 +1,27 @@
+=== Volcano relay E2E ===
+{"ws_url": "wss://mpxdworxojotiwjxdeds.supabase.co/functions/v1/asr-relay?session_id=becc6042-5ae2-4b65-bcbc-e1f51dd216b8", "sample_rate": 16000, "expires_at": 1780615965406, "session_id": "becc6042-5ae2-4b65-bcbc-e1f51dd216b8", "provider": "volcano", "connect_mode": "relay"}
+Traceback (most recent call last):
+  File "/Users/bryan/think/supabase/tests/asr_volcano_e2e.py", line 175, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/Users/bryan/think/supabase/tests/asr_volcano_e2e.py", line 167, in main
+    text = await transcribe_relay(session["ws_url"], pcm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bryan/think/supabase/tests/asr_volcano_e2e.py", line 123, in transcribe_relay
+    msg = await asyncio.wait_for(ws.recv(), timeout=8)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.13/site-packages/websockets/asyncio/connection.py", line 324, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedError: no close frame received or sent
