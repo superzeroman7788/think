@@ -168,6 +168,9 @@ function validateTaskItem(item: unknown, path: string, errors: string[]): AiTask
       errors.push(`${path}.planned_start: 必须是 HH:MM 格式(如 09:00),不要日期或时区`);
     }
   }
+  if (item.kind === undefined) {
+    errors.push(`${path}.kind: 必填 block 或 point`);
+  }
   let kind: TaskKind = "block";
   if (item.kind !== undefined) {
     const k = String(item.kind);

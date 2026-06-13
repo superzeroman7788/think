@@ -7,7 +7,13 @@ import {
   pickClarificationMessage,
 } from "./input_gate.ts";
 import { dedupePlanTasks } from "./dedupe.ts";
-import { finalizePlanTaskSemantics } from "./time_semantics.ts";
+import { collectBlockOverlapErrors, resolveBlockOverlaps } from "./block_scheduler.ts";
+import {
+  appendPlacementNotes,
+  applyPlacementAnchor,
+  clampUnintendedCrossMidnight,
+} from "./placement_semantics.ts";
+import { attachPointAnchorStarts, finalizePlanTaskSemantics } from "./time_semantics.ts";
 import {
   OUTPUT_SCHEMA_HINT,
   formatHardConstraints,
@@ -393,8 +399,25 @@ export async function buildPlanGenerateResponse(
   }
 
   const aiTasksWithoutRoutineDup = dedupeAiTasksByRoutineTitles(dedupedAiTasks, routines);
+  const { tasks: placementTasks, placementNotes } = applyPlacementAnchor(
+    aiTasksWithoutRoutineDup,
+    req.raw_input,
+    req.date,
+    timeZone,
+  );
+  const scheduledTasks = attachPointAnchorStarts(
+    resolveBlockOverlaps(
+      clampUnintendedCrossMidnight(placementTasks, req.raw_input),
+    ),
+  );
+  const overlapErrors = collectBlockOverlapErrors(scheduledTasks);
+  if (overlapErrors.length) {
+    console.error("[plan/generate] block overlap after resolve:", overlapErrors);
+    throw new Error("PLAN_BLOCK_OVERLAP");
+  }
+
   const routineTasks = routines.map((routine) => routineToTask(routine, req.date, timeZone));
-  const tasks = normalizePlannedStarts(aiTasksWithoutRoutineDup, req.date, timeZone);
+  const tasks = normalizePlannedStarts(scheduledTasks, req.date, timeZone);
   const suggestionTasks = normalizePlannedStarts(
     aiOutput.suggestion_tasks ?? [],
     req.date,
@@ -409,7 +432,7 @@ export async function buildPlanGenerateResponse(
       ...withSource(tasks, userTaskSource),
     ],
     suggestion_tasks: withSource(suggestionTasks, "ai_suggestion", "suggested"),
-    ai_comment: aiOutput.ai_comment,
+    ai_comment: appendPlacementNotes(aiOutput.ai_comment, placementNotes),
     deferred: aiOutput.deferred ?? [],
   };
 
