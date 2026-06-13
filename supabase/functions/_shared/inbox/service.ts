@@ -9,6 +9,30 @@ import type {
   InboxUpdateRequest,
 } from "./types.ts";
 
+export async function insertDeferredInboxItems(
+  supabase: SupabaseClient,
+  userId: string,
+  items: Array<{ title: string; due_date: string; due_part?: InboxDuePart | null }>,
+): Promise<number> {
+  let count = 0;
+  for (const item of items) {
+    await insertInboxItem(
+      supabase,
+      userId,
+      item.title,
+      {
+        title: item.title,
+        due_date: item.due_date,
+        due_part: item.due_part ?? null,
+        extract_failed: false,
+      },
+      "plan_defer",
+    );
+    count += 1;
+  }
+  return count;
+}
+
 export async function insertInboxItem(
   supabase: SupabaseClient,
   userId: string,

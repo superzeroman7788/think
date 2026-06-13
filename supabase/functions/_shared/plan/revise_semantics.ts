@@ -11,9 +11,11 @@ function truncateReason(text: string): string {
 export function computePlanReviseApplicable(
   revisions: RevisionItem[],
   added: AddedReviseTask[],
+  deferred: Array<{ title: string; due_date: string }> = [],
 ): boolean {
-  return revisions.some((r) => r.change === "moved" || r.change === "dropped") ||
-    added.length > 0;
+  return revisions.some((r) =>
+    r.change === "moved" || r.change === "skip" || r.change === "delete"
+  ) || added.length > 0 || deferred.length > 0;
 }
 
 /** v1.3: applicable=false 时保证非空人话（禁止静默拒）。 */
@@ -64,9 +66,10 @@ export function finalizePlanReviseSemantics(
   planned: ReviseTaskInput[],
   warnings: string[],
   summary: string,
+  deferred: Array<{ title: string; due_date: string }> = [],
 ): { applicable: boolean; reject_reason: string | null; warnings: string[]; revisions: RevisionItem[] } {
   const stableRevisions = enforceBlockStabilityForPointEdits(revisions, planned);
-  const applicable = computePlanReviseApplicable(stableRevisions, added);
+  const applicable = computePlanReviseApplicable(stableRevisions, added, deferred);
   if (applicable) {
     return { applicable: true, reject_reason: null, warnings, revisions: stableRevisions };
   }

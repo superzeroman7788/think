@@ -42,10 +42,17 @@ export type AiTaskItem = {
   anchor_task_id?: string | null;
 };
 
+export type DeferredItem = {
+  title: string;
+  due_date: string;
+  due_part?: "morning" | "afternoon" | "evening" | null;
+};
+
 export type AiPlanOutput = {
   tasks: AiTaskItem[];
   suggestion_tasks?: AiTaskItem[];
   ai_comment: string;
+  deferred?: DeferredItem[];
 };
 
 export type PlanTaskResponse = AiTaskItem & {
@@ -60,4 +67,5 @@ export type PlanGenerateResponse = {
   tasks: PlanTaskResponse[];
   suggestion_tasks: PlanTaskResponse[];
   ai_comment: string;
+  deferred: DeferredItem[];
 };

@@ -374,12 +374,13 @@ class ExecutionViewModel(
                         it.change in setOf("moved", "skip", "delete", "dropped")
                     }
                     val hasAdded = proposal.added.isNotEmpty()
+                    val hasDeferred = proposal.deferred.isNotEmpty()
                     // 调试探照灯:LLM 原话 → 返回结构 → FE 如何处理。
                     com.thinkandact.core.debug.FeDebug.llm(
                         userText = instruction,
                         rawStructure = "revisions=" + proposal.revisions.map { "${it.change}:${it.title}" } +
                             " added=" + proposal.added.map { it.title } + " warnings=" + proposal.warnings,
-                        handling = if (!hasRevisionChange && !hasAdded) "无 moved/skip/delete/added → 提示用户" else "渲染前后对比",
+                        handling = if (!hasRevisionChange && !hasAdded && !hasDeferred) "无变更 → 提示用户" else "渲染前后对比",
                     )
                     // FE 不识别的操作类型被丢:发声,别静默。
                     proposal.revisions.filter {
@@ -387,7 +388,7 @@ class ExecutionViewModel(
                     }.forEach {
                         com.thinkandact.core.debug.FeDebug.drop("plan-revise 操作 change=${it.change} (${it.title})", "FE 只渲染/应用 moved+skip+delete")
                     }
-                    if (!hasRevisionChange && !hasAdded) {
+                    if (!hasRevisionChange && !hasAdded && !hasDeferred) {
                         // v1.3:照实展示后端 reject_reason / warnings;**不得**用固定「没听出」覆盖 BE 文案。
                         val beReason = proposal.rejectReason?.takeIf { it.isNotBlank() }
                             ?: proposal.warnings.firstOrNull()?.takeIf { it.isNotBlank() }
@@ -441,11 +442,16 @@ class ExecutionViewModel(
                 kind = it.kind,
             )
         }
-        if (applyList.isEmpty() && addedList.isEmpty()) { _uiState.update { it.copy(proposal = null) }; return }
+        if (applyList.isEmpty() && addedList.isEmpty() && proposal.deferred.isEmpty()) {
+            _uiState.update { it.copy(proposal = null) }; return
+        }
         _uiState.update { it.copy(isApplying = true) }
         viewModelScope.launch {
-            runCatching { planRepository.applyRevision(proposal.revisionId, applyList, addedList) }
+            runCatching {
+                planRepository.applyRevision(proposal.revisionId, applyList, addedList, proposal.deferred)
+            }
                 .onSuccess { resp ->
+                    refreshInboxBadge()
                     val current = pickCurrent(resp.tasks)
                     _uiState.update {
                         it.copy(isApplying = false, proposal = null, tasks = resp.tasks, currentTaskId = current?.id, reviseHint = "好,按你说的调整了。")

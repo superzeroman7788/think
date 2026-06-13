@@ -62,7 +62,17 @@ data class PlanGenerateResponseDto(
     @SerialName("proposal_id") val proposalId: String,
     val tasks: List<PlanTaskDto> = emptyList(),
     @SerialName("suggestion_tasks") val suggestionTasks: List<PlanTaskDto> = emptyList(),
-    @SerialName("ai_comment") val aiComment: String = ""
+    @SerialName("ai_comment") val aiComment: String = "",
+    /** 非今天事项 → 已 defer 进收件箱(BE 落库);前端只展示确认 chip。 */
+    val deferred: List<DeferredItemDto> = emptyList(),
+)
+
+/** 「非今天」被抽进收件箱的事项(plan-generate / plan-revise 共用返回)。 */
+@Serializable
+data class DeferredItemDto(
+    val title: String,
+    @SerialName("due_date") val dueDate: String? = null,
+    @SerialName("due_part") val duePart: String? = null,
 )
 
 @Serializable
@@ -232,6 +242,8 @@ data class PlanReviseResponse(
     val revisions: List<RevisionDto> = emptyList(),
     val added: List<AddedReviseDto> = emptyList(),
     val warnings: List<String> = emptyList(),
+    /** 非今天事项 → 已 defer 进收件箱(BE 落库);前端只展示确认 chip。 */
+    val deferred: List<DeferredItemDto> = emptyList(),
     /** v1.3：true ⟺ 有 moved/skip/delete/added。BE 未升级时默认 true,FE 仍按本地是否有变更判定。 */
     val applicable: Boolean = true,
     /** v1.3：applicable=false 时后端必填的人话拒绝原因;FE 必须照实展示,**不得**用固定「没听出」覆盖。 */
@@ -271,6 +283,7 @@ data class PlanReviseApplyRequest(
     /** 仅 moved + skip + delete（unchanged 不传）。 */
     val revisions: List<ApplyRevisionDto> = emptyList(),
     val added: List<ApplyAddedReviseDto> = emptyList(),
+    val deferred: List<DeferredItemDto> = emptyList(),
 )
 
 @Serializable

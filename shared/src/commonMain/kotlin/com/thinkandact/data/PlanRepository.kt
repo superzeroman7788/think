@@ -412,6 +412,7 @@ class PlanRepository(
         revisionId: String,
         revisions: List<ApplyRevisionDto>,
         added: List<ApplyAddedReviseDto> = emptyList(),
+        deferred: List<DeferredItemDto> = emptyList(),
     ): PlanReviseApplyResponse {
         val session = ensureSession()
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
@@ -419,7 +420,7 @@ class PlanRepository(
             supabaseHeaders(session.accessToken)
             accept(ContentType.Application.Json)
             contentType(ContentType.Application.Json)
-            setBody(PlanReviseApplyRequest(date = today, revisionId = revisionId, revisions = revisions, added = added))
+            setBody(PlanReviseApplyRequest(date = today, revisionId = revisionId, revisions = revisions, added = added, deferred = deferred))
         }
         if (response.status.value == 409) {
             val body = response.bodyAsText()

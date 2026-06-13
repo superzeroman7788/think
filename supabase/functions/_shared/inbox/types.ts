@@ -1,6 +1,6 @@
 export type InboxDuePart = "morning" | "afternoon" | "evening";
 export type InboxStatus = "pending" | "added" | "dismissed" | "deleted";
-export type InboxSource = "voice" | "text" | "widget" | "shortcut";
+export type InboxSource = "voice" | "text" | "widget" | "shortcut" | "plan_defer";
 
 export type InboxItemRow = {
   id: string;
@@ -18,7 +18,12 @@ export type InboxItemRow = {
 };
 
 export type InboxCaptureRequest = {
-  raw_text: string;
+  raw_text?: string;
+  structured?: {
+    title: string;
+    due_date: string;
+    due_part?: InboxDuePart | null;
+  };
   client_local_date: string;
   client_tz: string;
   source?: InboxSource;

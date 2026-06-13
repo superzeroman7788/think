@@ -182,7 +182,7 @@ class FullPlanViewModel(
                 .onSuccess { p ->
                     val hasChange = p.revisions.any {
                         it.change in setOf("moved", "skip", "delete", "dropped")
-                    } || p.added.isNotEmpty()
+                    } || p.added.isNotEmpty() || p.deferred.isNotEmpty()
                     if (!hasChange) {
                         val reason = p.rejectReason?.takeIf { it.isNotBlank() } ?: p.warnings.firstOrNull()?.takeIf { it.isNotBlank() }
                         if (reason == null) com.thinkandact.core.debug.FeDebug.reject("propose 无操作且无 reject_reason", instruction)
@@ -207,10 +207,10 @@ class FullPlanViewModel(
             }
         }
         val addedList = p.added.map { ApplyAddedReviseDto(it.clientKey, it.title, it.plannedStart, it.plannedDuration, it.important, it.kind) }
-        if (applyList.isEmpty() && addedList.isEmpty()) { _uiState.update { it.copy(proposal = null) }; return }
+        if (applyList.isEmpty() && addedList.isEmpty() && p.deferred.isEmpty()) { _uiState.update { it.copy(proposal = null) }; return }
         _uiState.update { it.copy(isApplying = true) }
         viewModelScope.launch {
-            runCatching { planRepository.applyRevision(p.revisionId, applyList, addedList) }
+            runCatching { planRepository.applyRevision(p.revisionId, applyList, addedList, p.deferred) }
                 .onSuccess { _uiState.update { it.copy(isApplying = false, proposal = null, reviseHint = "好,按你说的调整了。") }; load() }
                 .onFailure { t ->
                     if (t is PlanReviseStaleException) { _uiState.update { it.copy(isApplying = false, proposal = null, reviseHint = t.message) }; load() }

@@ -188,7 +188,7 @@ fun FullPlanScreen(
             }
         }
 
-        state.proposal?.let { p -> ReviseDiffDialog(p.summary, p.revisions, p.added, p.warnings, state.isApplying, viewModel::cancelProposal, viewModel::applyProposal) }
+        state.proposal?.let { p -> ReviseDiffDialog(p.summary, p.revisions, p.added, p.deferred, p.warnings, state.isApplying, viewModel::cancelProposal, viewModel::applyProposal) }
         editTask?.let { t ->
             // B6-04/可点性:已跳过(或旧 dropped)的任务不进普通编辑,只给「恢复 / 删除」,免得像还活着。
             if (t.status == "skipped" || t.status == "dropped") {
@@ -512,7 +512,7 @@ private fun Stepper(value: Int, onMinus: () -> Unit, onPlus: () -> Unit, label: 
 }
 
 @Composable
-private fun ReviseDiffDialog(summary: String, revisions: List<RevisionDto>, added: List<AddedReviseDto>, warnings: List<String>, isApplying: Boolean, onCancel: () -> Unit, onApply: () -> Unit) {
+private fun ReviseDiffDialog(summary: String, revisions: List<RevisionDto>, added: List<AddedReviseDto>, deferred: List<com.thinkandact.data.remote.DeferredItemDto>, warnings: List<String>, isApplying: Boolean, onCancel: () -> Unit, onApply: () -> Unit) {
     val changes = revisions.filter { it.change in setOf("moved", "skip", "delete", "dropped") }
     Dialog(onDismissRequest = onCancel) {
         Column(modifier = Modifier.fillMaxWidth().background(TnaColors.Surface, TnaShapes.Card).border(1.dp, TnaColors.Line, TnaShapes.Card).padding(18.dp)) {
@@ -524,6 +524,7 @@ private fun ReviseDiffDialog(summary: String, revisions: List<RevisionDto>, adde
                 DiffRow(r.title, detail); Spacer(Modifier.height(8.dp))
             }
             added.forEach { a -> DiffRow(a.title, addedDiffDetail(a.plannedStart, a.plannedDuration, a.kind == "point"), accent = true); Spacer(Modifier.height(8.dp)) }
+            com.thinkandact.ui.common.DeferredInboxChips(deferred = deferred)
             warnings.forEach { w -> Text("· $w", modifier = Modifier.padding(top = 4.dp), style = TnaTypography.AiVoice.copy(color = TnaColors.AccentDeep)) }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TnaButton("取消", onCancel, enabled = !isApplying, style = TnaButtonStyle.Secondary, modifier = Modifier.weight(1f))

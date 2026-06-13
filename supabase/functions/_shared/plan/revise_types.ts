@@ -1,3 +1,9 @@
+export type DeferredReviseItem = {
+  title: string;
+  due_date: string;
+  due_part?: "morning" | "afternoon" | "evening" | null;
+};
+
 export type ReviseTaskInput = {
   id: string;
   title: string;
@@ -19,7 +25,7 @@ export type RevisionState = {
 export type RevisionItem = {
   task_id: string;
   title: string;
-  change: "moved" | "dropped" | "unchanged";
+  change: "moved" | "skip" | "delete" | "unchanged";
   started: boolean;
   before: RevisionState;
   after: RevisionState;
@@ -51,7 +57,7 @@ export type PlanReviseIntent = {
 export type PlanReviseResponse = {
   revision_id: string;
   provider: "deepseek" | "qwen" | "kimi";
-  /** true ⟺ 存在 moved/dropped 或 added（v1.3） */
+  /** true ⟺ 存在 moved/skip/delete 或 added（v1.3+） */
   applicable: boolean;
   /** applicable=false 时必填；禁止静默拒 */
   reject_reason: string | null;
@@ -60,12 +66,13 @@ export type PlanReviseResponse = {
   summary: string;
   revisions: RevisionItem[];
   added: AddedReviseTask[];
+  deferred: DeferredReviseItem[];
   warnings: string[];
 };
 
 export type ApplyRevisionInput = {
   task_id: string;
-  change: "moved" | "dropped";
+  change: "moved" | "skip" | "delete";
   after: {
     planned_start?: string;
     planned_duration?: number;
@@ -83,6 +90,11 @@ export type PlanReviseApplyRequest = {
     planned_start?: string | null;
     planned_duration?: number | null;
     important?: boolean;
+  }>;
+  deferred?: Array<{
+    title: string;
+    due_date: string;
+    due_part?: "morning" | "afternoon" | "evening" | null;
   }>;
 };
 
@@ -121,5 +133,11 @@ export type AiReviseOutput = {
     planned_start?: string;
     planned_duration?: number;
     important?: boolean;
+    kind?: string;
+  }>;
+  deferred?: Array<{
+    title: string;
+    due_date: string;
+    due_part?: string;
   }>;
 };

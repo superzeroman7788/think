@@ -232,6 +232,7 @@ export async function generatePlanWithLlm(
   messages: LLMMessage[],
   adapter: LLMAdapter,
   rawInput: string,
+  anchorDate: string,
   forceInvalidJson = false,
 ): Promise<
   AiPlanOutput & { provider: "deepseek" | "qwen" | "kimi"; llmAttempts: number; llmMs: number }
@@ -246,7 +247,7 @@ export async function generatePlanWithLlm(
     adapter,
     forceInvalidJson,
   );
-  let validated = parseAndValidatePlanOutput(llm.content, rawInput);
+  let validated = parseAndValidatePlanOutput(llm.content, rawInput, anchorDate);
 
   if (validated.ok) {
     return {
@@ -279,7 +280,7 @@ export async function generatePlanWithLlm(
       adapter,
       false,
     );
-    validated = parseAndValidatePlanOutput(llm.content, rawInput);
+    validated = parseAndValidatePlanOutput(llm.content, rawInput, anchorDate);
 
     if (validated.ok) {
       console.log(`[plan/generate] json validation recovered on attempt=${attempt + 1}`);
@@ -366,6 +367,7 @@ export async function buildPlanGenerateResponse(
     messages,
     adapter,
     rawInputWithRoutines,
+    req.date,
     deps.forceInvalidJson ?? false,
   );
 
@@ -374,6 +376,7 @@ export async function buildPlanGenerateResponse(
       tasks: aiOutput.tasks,
       suggestion_tasks: aiOutput.suggestion_tasks,
       ai_comment: aiOutput.ai_comment,
+      deferred: aiOutput.deferred,
     },
     req.raw_input,
   );
@@ -407,6 +410,7 @@ export async function buildPlanGenerateResponse(
     ],
     suggestion_tasks: withSource(suggestionTasks, "ai_suggestion", "suggested"),
     ai_comment: aiOutput.ai_comment,
+    deferred: aiOutput.deferred ?? [],
   };
 
   console.log(JSON.stringify({

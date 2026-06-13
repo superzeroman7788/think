@@ -1,8 +1,16 @@
 import { plannedStartToIso } from "./timezone.ts";
-import type { AddedReviseTask, AiReviseOutput, ReviseTaskInput, RevisionItem, RevisionState } from "./revise_types.ts";
+import { normalizeDeferredOps } from "./defer_semantics.ts";
+import type {
+  AddedReviseTask,
+  AiReviseOutput,
+  DeferredReviseItem,
+  ReviseTaskInput,
+  RevisionItem,
+  RevisionState,
+} from "./revise_types.ts";
 import { stripJsonFences } from "./schema.ts";
 
-const CHANGES = new Set(["moved", "dropped", "unchanged"]);
+const CHANGES = new Set(["moved", "skip", "delete", "unchanged", "dropped"]);
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -18,20 +26,26 @@ export function buildReviseSchemaHint(): string {
   "revisions": [
     {
       "task_id": "必须是可调整任务里的 id",
-      "change": "moved | dropped | unchanged",
+      "change": "moved | skip | delete | unchanged",
       "after": { "planned_start": "HH:MM", "planned_duration": 30, "status": "planned" }
     }
   ],
   "added": [
     { "title": "今天要新加的事", "planned_start": "HH:MM 可选", "planned_duration": 30, "important": false, "kind": "block|point" }
+  ],
+  "deferred": [
+    { "title": "非今天的事", "due_date": "YYYY-MM-DD", "due_part": "morning|afternoon|evening 可选" }
   ]
 }
 规则:
 - revisions 必须覆盖每一个可调整任务 id 恰好一次
-- change 只能是 moved/dropped/unchanged(revisions 里禁止 added)
-- added 用于列表里没有、用户想新加进今天计划的事(status=planned)
+- change 只能是 moved/skip/delete/unchanged(revisions 里禁止 added)
+- added 用于列表里没有、用户想**今天**新加进计划的事(status=planned)
+- deferred 用于**非今天**的事(明天/后天/周四等) → 不进 tasks/added,落收件箱
 - added 不要重复已有任务标题
-- dropped 的 after 只能是 { "status": "dropped" }
+- skip(不做了/跳过): after 只能是 { "status": "skipped" }（复盘灰显仍计跳过）
+- delete(删除/删掉): after 只能是 { "status": "deleted" }（软删,今日各视图消失）
+- 禁止再用 dropped
 - moved 的 after 必须含 planned_start(HH:MM) 和 status:"planned";actual_start 置 null
 - kind=point 的任务: moved 时 planned_duration=0;**不得改动 block 的起止**
 - 用户只调整 point(删/挪钉)时,所有 block 必须 unchanged
@@ -80,6 +94,9 @@ export function parseAiReviseOutput(raw: string): {
   if (parsed.added !== undefined && !Array.isArray(parsed.added)) {
     errors.push("added must be array");
   }
+  if (parsed.deferred !== undefined && !Array.isArray(parsed.deferred)) {
+    errors.push("deferred must be array");
+  }
 
   const revisions: AiReviseOutput["revisions"] = [];
   if (Array.isArray(parsed.revisions)) {
@@ -122,6 +139,10 @@ export function parseAiReviseOutput(raw: string): {
     }
   }
 
+  const deferredRaw: AiReviseOutput["deferred"] = Array.isArray(parsed.deferred)
+    ? parsed.deferred as AiReviseOutput["deferred"]
+    : [];
+
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
@@ -130,8 +151,18 @@ export function parseAiReviseOutput(raw: string): {
       warnings: (parsed.warnings as string[] | undefined)?.map(String) ?? [],
       revisions,
       added,
+      deferred: deferredRaw,
     },
   };
+}
+
+export function normalizeDeferredRevise(
+  ai: AiReviseOutput,
+  anchorDate: string,
+): { deferred: DeferredReviseItem[]; warnings: string[] } {
+  const norm = normalizeDeferredOps(ai.deferred ?? [], anchorDate);
+  const warnings = norm.errors.map((e) => `deferred: ${e}`);
+  return { deferred: norm.items, warnings };
 }
 
 function toState(task: ReviseTaskInput): RevisionState {
@@ -188,12 +219,20 @@ export function normalizeRevisions(
 
     if (change === "unchanged") {
       after = { ...before };
-    } else if (change === "dropped") {
+    } else if (change === "skip" || change === "dropped") {
       after = {
         planned_start: before.planned_start,
         planned_duration: before.planned_duration,
-        status: "dropped",
-        actual_start: before.actual_start,
+        status: "skipped",
+        actual_start: null,
+      };
+      if (change === "dropped") change = "skip";
+    } else if (change === "delete") {
+      after = {
+        planned_start: before.planned_start,
+        planned_duration: before.planned_duration,
+        status: "deleted",
+        actual_start: null,
       };
     } else if (change === "moved") {
       const ps = normalizeIsoOrHhmm(raw?.after?.planned_start, date, timezone);
@@ -253,7 +292,11 @@ export function normalizeAddedRevise(
   timezone: string,
 ): { added: AddedReviseTask[]; warnings: string[] } {
   const warnings: string[] = [];
-  const existingTitles = new Set(tasks.map((t) => normalizeTitleKey(t.title)));
+  const existingTitles = new Set(
+    tasks
+      .filter((t) => t.status !== "suggested")
+      .map((t) => normalizeTitleKey(t.title)),
+  );
   const seen = new Set<string>();
   const out: AddedReviseTask[] = [];
 

@@ -10,7 +10,7 @@ function normalizeTitle(raw: string, fallback: string): string {
   return t.length >= 1 ? t : fallback.trim().slice(0, 80);
 }
 
-function normalizeDueDate(value: unknown, anchorDate: string): string | null {
+export function normalizeDueDate(value: unknown, anchorDate: string): string | null {
   if (value === null || value === undefined || value === "") return null;
   const s = String(value).trim();
   if (!DATE_RE.test(s)) return null;
@@ -21,7 +21,7 @@ function normalizeDueDate(value: unknown, anchorDate: string): string | null {
   return s;
 }
 
-function normalizeDuePart(value: unknown): InboxDuePart | null {
+export function normalizeDuePart(value: unknown): InboxDuePart | null {
   if (value === null || value === undefined || value === "") return null;
   const s = String(value).trim().toLowerCase();
   return DUE_PARTS.has(s as InboxDuePart) ? (s as InboxDuePart) : null;

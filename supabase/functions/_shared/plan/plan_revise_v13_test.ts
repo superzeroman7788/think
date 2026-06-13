@@ -34,6 +34,21 @@ Deno.test("applicable true when moved", () => {
   assertEquals(computePlanReviseApplicable(rev, []), true);
 });
 
+Deno.test("applicable true when skip", () => {
+  const rev: RevisionItem[] = [{ ...unchangedRevision[0], change: "skip" }];
+  assertEquals(computePlanReviseApplicable(rev, []), true);
+});
+
+Deno.test("applicable true when delete", () => {
+  const rev: RevisionItem[] = [{ ...unchangedRevision[0], change: "delete" }];
+  assertEquals(computePlanReviseApplicable(rev, []), true);
+});
+
+Deno.test("applicable true when deferred only", () => {
+  const rev: RevisionItem[] = [{ ...unchangedRevision[0], change: "unchanged" }];
+  assertEquals(computePlanReviseApplicable(rev, [], [{ title: "交报告", due_date: "2026-06-03" }]), true);
+});
+
 Deno.test("applicable false when all unchanged", () => {
   assertEquals(computePlanReviseApplicable(unchangedRevision, []), false);
 });
@@ -111,7 +126,7 @@ Deno.test("finalize: point-only edits force blocks unchanged", () => {
     {
       task_id: "p1",
       title: "打电话",
-      change: "dropped",
+      change: "skip",
       started: false,
       before: {
         planned_start: pointTask.planned_start,
@@ -122,7 +137,7 @@ Deno.test("finalize: point-only edits force blocks unchanged", () => {
       after: {
         planned_start: pointTask.planned_start,
         planned_duration: 0,
-        status: "dropped",
+        status: "skipped",
         actual_start: null,
       },
     },
@@ -130,6 +145,6 @@ Deno.test("finalize: point-only edits force blocks unchanged", () => {
 
   const out = finalizePlanReviseSemantics(revisions, [], [blockTask, pointTask], [], "删掉提醒");
   assertEquals(out.revisions[0].change, "unchanged");
-  assertEquals(out.revisions[1].change, "dropped");
+  assertEquals(out.revisions[1].change, "skip");
   assertEquals(out.applicable, true);
 });

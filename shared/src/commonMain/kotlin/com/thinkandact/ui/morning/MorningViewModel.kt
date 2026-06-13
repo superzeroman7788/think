@@ -311,8 +311,16 @@ class MorningViewModel(
 
     private suspend fun doConfirm() {
         _uiState.update { it.copy(isSavingPlan = true, saveErrorMessage = null) }
+        val deferred = uiState.value.proposal?.deferred.orEmpty()
         runCatching { planRepository.confirmTodayTasks(uiState.value.editableTasks.map { it.task }) }
             .onSuccess { insertedRows ->
+                runCatching { inboxRepository.insertDeferredAll(deferred) }
+                    .onFailure { t ->
+                        com.thinkandact.core.debug.FeDebug.raw(
+                            com.thinkandact.core.debug.FeDebug.Layer.NETWORK,
+                            "defer inbox insert: ${t.message ?: t}",
+                        )
+                    }
                 _uiState.update { it.copy(isSavingPlan = false, isConfirmed = true, saveErrorMessage = null) }
                 // N-02:确认成功就地排 ★ 系统提醒——「早上确认→锁屏出门」不进执行屏也要响。
                 runCatching {

@@ -92,7 +92,19 @@ curl -X POST .../plan-revise -d '{"tasks":[],"instruction":"今天交电费",...
 
 ---
 
-## 六、未做（后续 v2.1）
+## 六、v2.1 · skip vs delete（已落地）
+
+| 用户说法 | `revisions.change` | 落库 | 今日视图 |
+|---|---|---|---|
+| 不做了 / 跳过 / 今天不弄了 | `skip` | `status=skipped` | 复盘灰显，按跳过计 |
+| 删除 / 删掉 / 去掉这项 | `delete` | `deleted_at=now()` | 计划/执行/复盘均不出现 |
+
+- 规则层：`classifyRemovalOp()` → `ReviseIntent.removal_op`，注入 LLM system hint
+- LLM 若仍输出 legacy `dropped` → 归一为 `skip`；若与用户 `removal_op` 冲突则以规则层为准
+- 迁移：`0022_plan_revise_skip_delete.sql`（`apply_plan_revise` 支持 skip/delete；dropped 兼容为 skip）
+- 评测：`revise_intent_test.ts` 含「把学英语删了」vs「学英语不做了」等 4 条
+
+## 七、未做（后续）
 
 - LLM 结构化 intent JSON（当前 bootstrap/revise 仍一次 LLM）
 - 执行屏空态改文案/路由到 morning（产品层）

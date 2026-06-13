@@ -8,11 +8,15 @@ import {
   buildReviseRetryMessage,
   buildReviseSchemaHint,
   normalizeAddedRevise,
+  normalizeDeferredRevise,
   normalizeRevisions,
   parseAiReviseOutput,
 } from "./revise_schema.ts";
-import { buildBootstrapSystemHint, extractReviseIntent } from "./revise_intent.ts";
+import { buildBootstrapSystemHint, buildRemovalIntentHint, extractReviseIntent } from "./revise_intent.ts";
+import { buildDeferToInboxHint, normalizeDeferredOps } from "./defer_semantics.ts";
+import type { RemovalIntentOp } from "./revise_intent.ts";
 import { finalizePlanReviseSemantics } from "./revise_semantics.ts";
+import { insertDeferredInboxItems } from "../inbox/service.ts";
 import type {
   AddedReviseTask,
   ApplyRevisionInput,
@@ -30,7 +34,7 @@ export { isTimeoutError } from "./generate.ts";
 const JSON_ATTEMPT_TEMPS = [0.4, 0.25, 0.1] as const;
 const MAX_INSTRUCTION = 500;
 
-function buildReviseSystemPrompt(): string {
+function buildReviseSystemPrompt(anchorDate: string): string {
   return [
     "你是 Think & Act 的日内重排助手。用户白天通过一句话调整剩余日程。",
     "硬规则:",
@@ -41,14 +45,17 @@ function buildReviseSystemPrompt(): string {
     "- important=true(★)的任务尽量 unchanged;必须动时写入 warnings",
     "- actual_start 非空仅表示执行屏曾「变当前」,不等于用户已真正开工;status=planned 的任务仍可 moved",
     "- moved 后 after.actual_start 应为 null(改时间会清掉变当前标记)",
-    "- dropped 的 after 只能是 { \"status\": \"dropped\" }",
+    "- skip(不做了/跳过): after 只能是 { \"status\": \"skipped\" }",
+    "- delete(删除/删掉): after 只能是 { \"status\": \"deleted\" }",
+    "- 禁止再用 dropped",
     "- moved 的 after: planned_start 用 HH:MM(今天本地),status 固定 planned",
     "- kind=point(时刻点/钉子): duration=0;只动该 point,**不得改变 block 起止**",
     "- 用户只删/挪 point 时,所有 block 必须 unchanged",
     "- revisions 必须覆盖每一个可调整任务 id 恰好一次；无可调整任务时 revisions=[]",
     "- summary 一两句人话;warnings 可空数组",
-    "- 若用户指令无法对应任何 moved/dropped/added,仍须 output 全 unchanged,但在 warnings 写清原因与换说法建议",
+    "- 若用户指令无法对应任何 moved/skip/delete/added,仍须 output 全 unchanged,但在 warnings 写清原因与换说法建议",
     "输出合法 JSON,不要 markdown。",
+    buildDeferToInboxHint(anchorDate),
     "schema:",
     buildReviseSchemaHint(),
   ].join("\n");
@@ -119,6 +126,49 @@ async function reviseWithLlm(
   throw err;
 }
 
+function coerceRemovalRevision(
+  r: RevisionItem,
+  removalOp: RemovalIntentOp | null,
+): RevisionItem {
+  if (r.change !== "skip" && r.change !== "delete") return r;
+  const op: RemovalIntentOp = r.change;
+  if (op === "delete") {
+    return {
+      ...r,
+      change: "delete",
+      after: {
+        planned_start: r.before.planned_start,
+        planned_duration: r.before.planned_duration,
+        status: "deleted",
+        actual_start: null,
+      },
+    };
+  }
+  return {
+    ...r,
+    change: "skip",
+    after: {
+      planned_start: r.before.planned_start,
+      planned_duration: r.before.planned_duration,
+      status: "skipped",
+      actual_start: null,
+    },
+  };
+}
+
+function applyRemovalIntentToRevisions(
+  revisions: RevisionItem[],
+  removalOp: RemovalIntentOp | null,
+): RevisionItem[] {
+  const hasRemoval = revisions.some((r) => r.change === "skip" || r.change === "delete");
+  if (!hasRemoval || !removalOp) return revisions.map((r) => coerceRemovalRevision(r, removalOp));
+  return revisions.map((r) => {
+    if (r.change !== "skip" && r.change !== "delete") return r;
+    if (r.change === removalOp) return coerceRemovalRevision(r, removalOp);
+    return { ...r, change: removalOp, after: { ...r.after } };
+  }).map((r) => coerceRemovalRevision(r, removalOp));
+}
+
 export function parseProposeRequest(body: unknown): PlanReviseRequest | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
@@ -172,14 +222,16 @@ export function parseApplyRequest(body: unknown): PlanReviseApplyRequest | null 
     if (!row || typeof row !== "object") return null;
     const r = row as Record<string, unknown>;
     const change = String(r.change ?? "");
-    if (change !== "moved" && change !== "dropped") return null;
+    if (change !== "moved" && change !== "skip" && change !== "delete" && change !== "dropped") {
+      return null;
+    }
     if (typeof r.task_id !== "string" || !r.task_id.trim()) return null;
     const afterRaw = r.after;
     if (!afterRaw || typeof afterRaw !== "object") return null;
     const after = afterRaw as Record<string, unknown>;
     revisions.push({
       task_id: r.task_id.trim(),
-      change,
+      change: change === "dropped" ? "skip" : change as ApplyRevisionInput["change"],
       after: {
         planned_start: typeof after.planned_start === "string" ? after.planned_start : undefined,
         planned_duration: typeof after.planned_duration === "number"
@@ -208,13 +260,33 @@ export function parseApplyRequest(body: unknown): PlanReviseApplyRequest | null 
     }
   }
 
-  if (revisions.length === 0 && added.length === 0) return null;
+  const deferred: NonNullable<PlanReviseApplyRequest["deferred"]> = [];
+  if (b.deferred !== undefined) {
+    if (!Array.isArray(b.deferred)) return null;
+    for (const row of b.deferred) {
+      if (!row || typeof row !== "object") return null;
+      const r = row as Record<string, unknown>;
+      if (typeof r.title !== "string" || !r.title.trim()) return null;
+      if (typeof r.due_date !== "string" || !r.due_date.trim()) return null;
+      const duePart = r.due_part;
+      deferred.push({
+        title: r.title.trim(),
+        due_date: r.due_date.trim(),
+        due_part: duePart === "morning" || duePart === "afternoon" || duePart === "evening"
+          ? duePart
+          : null,
+      });
+    }
+  }
+
+  if (revisions.length === 0 && added.length === 0 && deferred.length === 0) return null;
 
   return {
     date: b.date,
     revision_id: b.revision_id.trim(),
     revisions,
     added,
+    deferred,
   };
 }
 
@@ -252,13 +324,14 @@ export async function buildPlanReviseResponse(
       summary: reject_reason,
       revisions: [],
       added: [],
+      deferred: [],
       warnings: [reject_reason],
     };
   }
 
   const systemPrompt = intent.mode === "bootstrap"
-    ? `${buildReviseSystemPrompt()}\n\n${buildBootstrapSystemHint()}`
-    : buildReviseSystemPrompt();
+    ? `${buildReviseSystemPrompt(req.date)}\n\n${buildBootstrapSystemHint()}\n\n${buildDeferToInboxHint(req.date)}`
+    : `${buildReviseSystemPrompt(req.date)}\n\n${buildRemovalIntentHint(intent.removal_op)}`;
 
   const messages: LLMMessage[] = [
     { role: "system", content: systemPrompt },
@@ -282,19 +355,9 @@ export async function buildPlanReviseResponse(
   }
 
   const addedPart = normalizeAddedRevise(aiParsed.value, req.tasks, req.date, req.timezone);
-  const warnings = [...normalized.warnings, ...addedPart.warnings];
-  const revisions = normalized.revisions.map((r) => {
-    if (r.change !== "dropped") return r;
-    return {
-      ...r,
-      after: {
-        planned_start: null,
-        planned_duration: null,
-        status: "dropped",
-        actual_start: null,
-      },
-    };
-  });
+  const deferredPart = normalizeDeferredRevise(aiParsed.value, req.date);
+  const warnings = [...normalized.warnings, ...addedPart.warnings, ...deferredPart.warnings];
+  const revisions = applyRemovalIntentToRevisions(normalized.revisions, intent.removal_op);
 
   const baseline = buildBaseline(planned);
   const addedSnapshot = buildAddedReviseSnapshot(addedPart.added);
@@ -311,6 +374,7 @@ export async function buildPlanReviseResponse(
     planned,
     warnings,
     aiParsed.value.summary,
+    deferredPart.deferred,
   );
 
   return {
@@ -322,6 +386,7 @@ export async function buildPlanReviseResponse(
     summary: aiParsed.value.summary,
     revisions: semantics.revisions,
     added: addedPart.added,
+    deferred: deferredPart.deferred,
     warnings: semantics.warnings,
   };
 }
@@ -345,8 +410,10 @@ export async function applyPlanRevise(
   const payload = req.revisions.map((r) => ({
     task_id: r.task_id,
     change: r.change,
-    after: r.change === "dropped"
-      ? { status: "dropped" }
+    after: r.change === "skip"
+      ? { status: "skipped" }
+      : r.change === "delete"
+      ? { status: "deleted" }
       : {
         planned_start: r.after.planned_start,
         planned_duration: r.after.planned_duration ?? null,
@@ -369,6 +436,11 @@ export async function applyPlanRevise(
   }
 
   const applied = (data as { applied_count?: number })?.applied_count ?? 0;
+
+  const deferNorm = normalizeDeferredOps(req.deferred ?? [], req.date);
+  if (deferNorm.items.length) {
+    await insertDeferredInboxItems(supabase, userId, deferNorm.items);
+  }
 
   const { data: tasks, error: fetchError } = await supabase
     .from("tasks")

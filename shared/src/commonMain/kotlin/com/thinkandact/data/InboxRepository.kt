@@ -3,6 +3,7 @@ package com.thinkandact.data
 import com.thinkandact.core.config.SupabaseConfig
 import com.thinkandact.data.remote.InboxBadgeResponse
 import com.thinkandact.data.remote.InboxCaptureRequest
+import com.thinkandact.data.remote.InboxStructuredCaptureDto
 import com.thinkandact.data.remote.InboxCaptureResponse
 import com.thinkandact.data.remote.InboxItemDto
 import com.thinkandact.data.remote.InboxListResponse
@@ -36,6 +37,37 @@ class InboxRepository(
     private val base = "${SupabaseConfig.URL}/functions/v1"
     private fun today() = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
     private fun tzId() = TimeZone.currentSystemDefault().id
+
+    /** plan defer:结构化直写 inbox(不走 LLM,与 inbox-capture 同管道)。 */
+    suspend fun insertDeferred(title: String, dueDate: String, duePart: String? = null) {
+        val session = planRepository.ensureSession()
+        val resp = httpClient.post("$base/inbox-capture") {
+            supabaseHeaders(session.accessToken)
+            accept(ContentType.Application.Json)
+            contentType(ContentType.Application.Json)
+            setBody(
+                InboxCaptureRequest(
+                    structured = InboxStructuredCaptureDto(title = title.trim(), dueDate = dueDate, duePart = duePart),
+                    clientLocalDate = today(),
+                    clientTz = tzId(),
+                    source = "plan_defer",
+                ),
+            )
+        }
+        if (!resp.status.isSuccess()) {
+            val raw = resp.bodyAsText()
+            com.thinkandact.core.debug.FeDebug.backend("/inbox-capture structured", resp.status.value, null, raw)
+            throw IllegalStateException(captureReason(raw))
+        }
+    }
+
+    /** 批量 defer(plan 确认 / revise apply 后)。 */
+    suspend fun insertDeferredAll(items: List<com.thinkandact.data.remote.DeferredItemDto>) {
+        for (item in items) {
+            val due = item.dueDate?.takeIf { it.isNotBlank() } ?: continue
+            insertDeferred(item.title, due, item.duePart)
+        }
+    }
 
     /** 记一笔 + AI 抽日期。后端保证原文不丢(extract_failed 时 due 为 null)。 */
     suspend fun capture(rawText: String, source: String): InboxCaptureResponse {

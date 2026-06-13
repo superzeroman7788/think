@@ -194,6 +194,7 @@ fun MorningScreen(
                 ProposalContent(
                     tasks = state.editableTasks,
                     aiComment = state.proposal!!.aiComment,
+                    deferred = state.proposal!!.deferred,
                     isConfirmed = state.isConfirmed,
                     saveErrorMessage = state.saveErrorMessage,
                     addTaskMessage = state.addTaskMessage,
@@ -622,6 +623,7 @@ private fun LoadingContent(isAdjusting: Boolean = false, onCancel: () -> Unit = 
 private fun ProposalContent(
     tasks: List<EditablePlanTask>,
     aiComment: String,
+    deferred: List<com.thinkandact.data.remote.DeferredItemDto> = emptyList(),
     isConfirmed: Boolean,
     saveErrorMessage: String?,
     addTaskMessage: String? = null,
@@ -663,6 +665,7 @@ private fun ProposalContent(
 
     SectionLabel(text = "ai voice", modifier = Modifier.padding(top = 9.dp, bottom = 7.dp))
     AiVoicePanel(text = aiComment)
+    com.thinkandact.ui.common.DeferredInboxChips(deferred = deferred)
     saveErrorMessage?.let { ErrorPanel(message = it, onRetry = onRetrySave, modifier = Modifier.padding(top = 12.dp)) }
 }
 

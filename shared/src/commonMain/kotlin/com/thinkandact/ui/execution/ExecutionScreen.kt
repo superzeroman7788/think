@@ -269,6 +269,7 @@ fun ExecutionScreen(
             summary = proposal.summary,
             revisions = proposal.revisions,
             added = proposal.added,
+            deferred = proposal.deferred,
             warnings = proposal.warnings,
             isApplying = state.isApplying,
             onCancel = viewModel::cancelProposal,
@@ -696,6 +697,7 @@ private fun ReviseDiffDialog(
     summary: String,
     revisions: List<RevisionDto>,
     added: List<AddedReviseDto>,
+    deferred: List<com.thinkandact.data.remote.DeferredItemDto>,
     warnings: List<String>,
     isApplying: Boolean,
     onCancel: () -> Unit,
@@ -717,6 +719,7 @@ private fun ReviseDiffDialog(
                 AddedRow(a)
                 Spacer(modifier = Modifier.height(8.dp))
             }
+            com.thinkandact.ui.common.DeferredInboxChips(deferred = deferred)
             if (unchangedCount > 0) {
                 Text(text = "其余 $unchangedCount 项不变。", style = TnaTypography.Mono.copy(color = TnaColors.Muted))
             }

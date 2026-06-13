@@ -1,5 +1,6 @@
-import type { AiPlanOutput, AiTaskItem, TaskKind, TaskType, TimeOfDay } from "./types.ts";
+import type { AiPlanOutput, AiTaskItem, DeferredItem, TaskKind, TaskType, TimeOfDay } from "./types.ts";
 import { collectTimeSemanticErrors } from "./time_semantics.ts";
+import { normalizeDeferredOps } from "./defer_semantics.ts";
 
 const TASK_TYPES = new Set<TaskType>([
   "deep_work",
@@ -243,7 +244,7 @@ export function stripJsonFences(text: string): string {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
-export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
+export function parseAndValidatePlanOutput(raw: string, rawInput?: string, anchorDate?: string): {
   ok: true;
   value: AiPlanOutput;
 } | {
@@ -264,7 +265,7 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
   }
 
   const rootKeys = Object.keys(parsed);
-  const allowedRoot = new Set(["tasks", "suggestion_tasks", "ai_comment"]);
+  const allowedRoot = new Set(["tasks", "suggestion_tasks", "ai_comment", "deferred"]);
   for (const k of rootKeys) {
     if (!allowedRoot.has(k)) errors.push(`unexpected root field ${k}`);
   }
@@ -282,6 +283,17 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
       errors.push("suggestion_tasks must be array");
     } else if (parsed.suggestion_tasks.length > 3) {
       errors.push("suggestion_tasks length out of range");
+    }
+  }
+
+  let deferred: DeferredItem[] = [];
+  if (parsed.deferred !== undefined) {
+    if (!anchorDate) {
+      errors.push("deferred requires anchor date for validation");
+    } else {
+      const deferNorm = normalizeDeferredOps(parsed.deferred, anchorDate);
+      errors.push(...deferNorm.errors);
+      deferred = deferNorm.items;
     }
   }
 
@@ -314,6 +326,7 @@ export function parseAndValidatePlanOutput(raw: string, rawInput?: string): {
     tasks: capImportantTasks(tasks),
     suggestion_tasks: capImportantTasks(suggestionTasks),
     ai_comment: parsed.ai_comment as string,
+    deferred,
   };
 
   const metaErrors = collectMetaLanguageErrors(value);
