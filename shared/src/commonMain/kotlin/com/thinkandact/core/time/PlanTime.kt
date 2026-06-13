@@ -2,11 +2,9 @@ package com.thinkandact.core.time
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.daysUntil
 import kotlinx.datetime.offsetIn
 import kotlinx.datetime.todayIn
 import kotlinx.datetime.toInstant
@@ -108,29 +106,3 @@ fun addedDiffDetail(plannedStart: String?, plannedDurationMin: Int?, isPoint: Bo
     return if (r.isNotEmpty()) "新 $r" else "新增到今天"
 }
 
-/**
- * 「非今天事项进收件箱」确认话术(搭子语气、陈述不感叹):
- * 「交报告」是明天的,先放进收件箱了,到时早上提你。
- */
-fun deferChipText(title: String, dueDate: String?, duePart: String?): String {
-    val whenStr = (deferDayLabel(dueDate) + deferPartLabel(duePart)).ifBlank { "改天" }
-    return "「$title」是${whenStr}的,先放进收件箱了,到时早上提你。"
-}
-
-private fun deferDayLabel(dueDate: String?): String {
-    val d = dueDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return ""
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-    return when (today.daysUntil(d)) {
-        0 -> "今天"
-        1 -> "明天"
-        2 -> "后天"
-        else -> "${d.monthNumber}月${d.dayOfMonth}日"
-    }
-}
-
-private fun deferPartLabel(duePart: String?): String = when (duePart) {
-    "morning" -> "上午"
-    "afternoon" -> "下午"
-    "evening" -> "晚上"
-    else -> ""
-}
